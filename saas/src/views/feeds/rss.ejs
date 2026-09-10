@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title><%= tenant.name %> news — Rnews1</title>
+    <link><%= appOrigin %>/embed/<%= tenant.public_token %></link>
+    <atom:link
+      href="<%= appOrigin %>/feed/<%= tenant.public_token %>.xml"
+      rel="self"
+      type="application/rss+xml"
+    />
+    <description>Company news briefing powered by Rnews1</description>
+    <language><%= tenant.language %></language>
+    <lastBuildDate><%= lastBuildDate %></lastBuildDate>
+
+    <% for (const item of items) { %>
+      <item>
+        <title><%= item.title %></title>
+        <link><%= item.hostedUrl %></link>
+        <guid isPermaLink="true"><%= item.hostedUrl %></guid>
+        <description><%= item.summary %> Source: <%= item.source %>. Powered by Rnews1.</description>
+        <pubDate><%= item.pubDate %></pubDate>
+      </item>
+    <% } %>
+  </channel>
+</rss>

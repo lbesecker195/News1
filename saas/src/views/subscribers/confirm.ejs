@@ -1,0 +1,16 @@
+<%- include("../partials/header") %>
+
+<section class="card">
+  <h1>Receive your company briefing?</h1>
+
+  <p>
+    Confirm to receive a daily Rnews1 digest.
+    You can unsubscribe at any time.
+  </p>
+
+  <form method="post" action="/confirm/<%= confirmationToken %>">
+    <button>Confirm my subscription</button>
+  </form>
+</section>
+
+<%- include("../partials/footer") %>

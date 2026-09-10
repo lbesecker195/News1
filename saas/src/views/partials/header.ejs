@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="<%= locals.htmlLang || "en" %>" dir="<%= locals.dir || "ltr" %>">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <% if (indexable) { %>
+    <meta name="description" content="<%= brand.description %>">
+  <% } else { %>
+    <meta name="robots" content="noindex">
+  <% } %>
+
+  <title><%= title %> — <%= brand.name %></title>
+
+  <% if (locals.canonicalUrl) { %>
+    <link rel="canonical" href="<%= canonicalUrl %>">
+  <% } %>
+
+  <%
+    /*
+     * Each locale is its own page. hreflang is what tells a search engine they
+     * are translations of one article rather than duplicates competing with
+     * each other — and x-default names the one to serve when no language
+     * matches the reader.
+     */
+  %>
+  <% for (const alt of (locals.alternates || [])) { %>
+    <link rel="alternate" hreflang="<%= alt.language %>" href="<%= alt.url %>">
+    <% if (alt.language === "en") { %>
+      <link rel="alternate" hreflang="x-default" href="<%= alt.url %>">
+    <% } %>
+  <% } %>
+
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body class="<%= locals.bodyClass || "" %>">
+  <nav>
+    <a class="brand" href="/">
+      <%= brand.name %><span> / <%= brand.tagline %></span>
+    </a>
+
+    <%
+      /*
+       * The embed renders inside a customer's own website. Our navigation does
+       * not belong in their page, so that view turns the chrome off.
+       */
+    %>
+    <% if (locals.chrome !== false) { %>
+      <span class="nav-links">
+        <% if (locals.signedIn) { %>
+          <a href="/app">Dashboard</a>
+        <% } else { %>
+          <a href="/login">Sign in</a>
+        <% } %>
+      </span>
+    <% } %>
+  </nav>
+  <main>

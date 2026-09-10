@@ -1,0 +1,19 @@
+<%- include("../partials/header", { htmlLang: tenant.language }) %>
+
+<h1><%= tenant.name %> briefing</h1>
+
+<% for (const item of items) { %>
+  <%- include("../partials/news-item", { item }) %>
+<% } %>
+
+<p>
+  <a
+    href="https://<%= tenant.domain %>"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Visit <%= tenant.name %>
+  </a>
+</p>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,172 @@
+<%- include("../partials/header") %>
+
+<h1>Ad server</h1>
+
+<p class="small">
+  Signed in as <%= admin.email %>.
+  <form method="post" action="/admin/logout" style="display:inline;">
+    <button style="padding:2px 8px;font-size:0.8rem;">Sign out</button>
+  </form>
+</p>
+
+<% if (notice) { %>
+  <p id="message" class="ok"><%= notice %></p>
+<% } %>
+
+<section class="grid">
+  <article class="card">
+    <p class="eyebrow">PAYING CUSTOMERS</p>
+    <p class="price"><%= platform.paying_tenants %></p>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">RECIPIENTS</p>
+    <p class="price"><%= platform.recipients %></p>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">STORIES TODAY</p>
+    <p class="price"><%= platform.stories_today %></p>
+  </article>
+
+  <article class="card">
+    <p class="eyebrow">AD REVENUE TO DATE</p>
+    <p class="price">$<%= (platform.revenue_cents / 100).toFixed(2) %></p>
+    <p class="small">
+      <%= platform.impressions %> impressions · <%= platform.clicks %> clicks
+    </p>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Campaigns</h2>
+
+  <% if (!campaigns.length) { %>
+    <p class="small">No campaigns yet.</p>
+  <% } else { %>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+        <thead>
+          <tr style="text-align:left;">
+            <th>Advertiser</th><th>Campaign</th><th>Status</th>
+            <th>Flight</th><th>CPM</th><th>Impr.</th><th>Opens</th>
+            <th>Clicks</th><th>Revenue</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const c of campaigns) { %>
+            <tr style="border-top:1px solid var(--line);">
+              <td><%= c.advertiser %></td>
+              <td><%= c.name %></td>
+              <td><%= c.status %></td>
+              <td class="small">
+                <%= c.starts_on.toISOString().slice(0, 10) %> →
+                <%= c.ends_on.toISOString().slice(0, 10) %>
+              </td>
+              <td>$<%= (c.cpm_cents / 100).toFixed(2) %></td>
+              <td><%= c.impressions %></td>
+              <td><%= c.confirmed_opens %></td>
+              <td><%= c.clicks %></td>
+              <td>$<%= (c.revenue_cents / 100).toFixed(2) %></td>
+              <td>
+                <form method="post" action="/admin/campaigns/<%= c.id %>/status">
+                  <select name="status" onchange="this.form.submit()">
+                    <% for (const s of ["draft","active","paused","completed"]) { %>
+                      <option value="<%= s %>"
+                        <%= s === c.status ? "selected" : "" %>><%= s %></option>
+                    <% } %>
+                  </select>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>New advertiser</h2>
+
+  <form method="post" action="/admin/advertisers">
+    <label>Name <input name="name" required maxlength="120"></label>
+    <label>Contact email <input name="contact_email" type="email"></label>
+    <button>Add advertiser</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>New campaign</h2>
+
+  <% if (!advertisers.length) { %>
+    <p class="small">Add an advertiser first.</p>
+  <% } else { %>
+    <form method="post" action="/admin/campaigns">
+      <label>
+        Advertiser
+        <select name="advertiser_id" required>
+          <% for (const a of advertisers) { %>
+            <option value="<%= a.id %>"><%= a.name %></option>
+          <% } %>
+        </select>
+      </label>
+
+      <label>Campaign name <input name="name" required maxlength="120"></label>
+      <label>Starts <input name="starts_on" type="date" required></label>
+      <label>Ends <input name="ends_on" type="date" required></label>
+      <label>CPM in cents <input name="cpm_cents" type="number" value="0" min="0"></label>
+      <label>Daily cap, 0 for none <input name="daily_cap" type="number" value="0" min="0"></label>
+      <label>Total cap, 0 for none <input name="total_cap" type="number" value="0" min="0"></label>
+
+      <p class="small">
+        Targeting is comma separated. Leave a field empty to place no
+        restriction on it. Titles are patterns, so <code>%vp%</code> matches
+        any job title containing "vp".
+      </p>
+
+      <label>Job titles <input name="titles" placeholder="%vp%, %head of%"></label>
+      <label>Industries <input name="industries" placeholder="SaaS, Logistics"></label>
+      <label>Topics <input name="topics" placeholder="robotics, automation"></label>
+
+      <button>Create campaign</button>
+    </form>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>New creative</h2>
+
+  <% if (!campaigns.length) { %>
+    <p class="small">Create a campaign first.</p>
+  <% } else { %>
+    <form method="post" action="/admin/creatives">
+      <label>
+        Campaign
+        <select name="campaign_id" required>
+          <% for (const c of campaigns) { %>
+            <option value="<%= c.id %>"><%= c.advertiser %> — <%= c.name %></option>
+          <% } %>
+        </select>
+      </label>
+
+      <label>
+        Slot
+        <select name="slot">
+          <option value="sponsored_story">Sponsored story</option>
+          <option value="banner">Banner</option>
+        </select>
+      </label>
+
+      <label>Headline <input name="headline" required maxlength="200"></label>
+      <label>Body <textarea name="body" required maxlength="600"></textarea></label>
+      <label>Call to action <input name="cta" maxlength="60" placeholder="Learn more"></label>
+      <label>Click URL <input name="click_url" type="url" required
+                              placeholder="https://advertiser.example/offer"></label>
+
+      <button>Add creative</button>
+    </form>
+  <% } %>
+</section>
+
+<%- include("../partials/footer") %>

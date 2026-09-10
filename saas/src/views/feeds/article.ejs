@@ -1,0 +1,31 @@
+<%- include("../partials/header", { htmlLang: tenant.language }) %>
+
+<article class="story">
+  <h1><%= item.title %></h1>
+
+  <p class="lead"><%= item.summary %></p>
+
+  <% for (const paragraph of String(item.body || "").split(/\n{2,}/)) { %>
+    <% if (paragraph.trim()) { %><p><%= paragraph.trim() %></p><% } %>
+  <% } %>
+
+  <p class="small">
+    Reported by <%= item.source %> ·
+    <a href="<%= item.sourceUrl %>" rel="noopener noreferrer">
+      Read the original coverage
+    </a>
+  </p>
+</article>
+
+<p>
+  Selected for
+  <a href="https://<%= tenant.domain %>"><%= tenant.name %></a>.
+  <a href="<%= appOrigin %>/embed/<%= tenant.public_token %>">More stories</a>.
+</p>
+
+<p class="small">
+  Written by Rnews1 from published reporting, not original journalism.
+  Consult the linked publisher for the full story.
+</p>
+
+<%- include("../partials/footer") %>

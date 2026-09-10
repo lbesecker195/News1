@@ -1,0 +1,35 @@
+{
+  "name": "rnews1",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Company news feeds, website embeds and daily team briefings.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.mjs",
+    "worker": "node --env-file=.env src/workers/main.mjs",
+    "plan": "node --env-file=.env src/workers/main.mjs --plan",
+    "import": "node --env-file=.env scripts/import-contacts.mjs",
+    "migrate": "node --env-file=.env scripts/migrate.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
+    "create-admin": "node --env-file=.env scripts/create-admin.mjs",
+    "login": "node --env-file=.env scripts/login-link.mjs",
+    "import-hugo": "node --env-file=.env scripts/import-hugo.mjs",
+    "create-content": "node --env-file=.env scripts/create-content.mjs",
+    "translate": "node --env-file=.env scripts/translate.mjs",
+    "custom-report": "node --env-file=.env scripts/custom-report.mjs",
+    "pdf": "node --env-file=.env scripts/render-pdf.mjs"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.16.0",
+    "puppeteer": "^25.10.0",
+    "yaml": "^2.9.0",
+    "zod": "^3.25.76"
+  }
+}

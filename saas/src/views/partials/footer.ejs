@@ -1,0 +1,16 @@
+  </main>
+
+  <footer>
+    <a href="/">Powered by Rnews1</a> ·
+    <% if (locals.chrome !== false) { %>
+      <% if (locals.signedIn) { %>
+        <a href="/app">Dashboard</a> ·
+      <% } else { %>
+        <a href="/login">Sign in or create an account</a> ·
+      <% } %>
+    <% } %>
+    <a href="/privacy">Privacy</a> ·
+    <a href="/terms">Terms</a>
+  </footer>
+</body>
+</html>

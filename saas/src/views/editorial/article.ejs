@@ -1,0 +1,72 @@
+<%- include("../partials/header", { htmlLang: language, dir: dir }) %>
+
+<div class="progress" aria-hidden="true"><span id="read-progress"></span></div>
+
+<article class="story">
+  <p class="kicker">
+    <a href="/<%= language %>/<%= (story.category || "news").toLowerCase() %>">
+      <%= story.category || "News" %>
+    </a>
+    <span class="dot">·</span>
+    <time datetime="<%= date %>"><%= date %></time>
+    <span class="dot">·</span>
+    <span><%= minutes %> min read</span>
+  </p>
+
+  <h1><%= story.headline %></h1>
+
+  <% if (story.standfirst) { %>
+    <p class="standfirst"><%= story.standfirst %></p>
+  <% } %>
+
+  <div class="prose">
+    <%- html %>
+  </div>
+
+  <% if (story.tags && story.tags.length) { %>
+    <p class="tags">
+      <% for (const tag of story.tags.slice(0, 10)) { %>
+        <span class="tag"><%= tag %></span>
+      <% } %>
+    </p>
+  <% } %>
+</article>
+
+<% if (related.length) { %>
+  <section class="continue">
+    <h2>Continue reading</h2>
+
+    <div class="continue-grid">
+      <% for (const item of related) { %>
+        <a class="next" href="<%= item.href %>">
+          <span class="next-kicker">
+            <%= item.category %> · <%= item.minutes %> min
+          </span>
+          <span class="next-title"><%= item.headline %></span>
+          <% if (item.standfirst) { %>
+            <span class="next-standfirst"><%= item.standfirst %></span>
+          <% } %>
+        </a>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+
+<% if (alternates.length > 1) { %>
+  <section class="locales">
+    <h2>Read this in another language</h2>
+
+    <div class="locale-list">
+      <% for (const alt of alternates) { %>
+        <% if (alt.language !== language) { %>
+          <a href="<%= alt.url %>" hreflang="<%= alt.language %>"
+             lang="<%= alt.language %>" dir="<%= alt.dir %>"><%= alt.name %></a>
+        <% } %>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+
+<script src="/article.js" defer></script>
+
+<%- include("../partials/footer") %>

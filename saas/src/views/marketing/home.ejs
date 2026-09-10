@@ -1,0 +1,163 @@
+<%- include("../partials/header") %>
+
+<section class="hero">
+  <p class="eyebrow">
+    FOR TEAMS WHOSE AUDIENCE IS NOT ONE AUDIENCE
+  </p>
+
+  <h1>Real News,<br>Made for One.</h1>
+
+  <p class="lead">
+    Not a newsletter blasted to a list. Upload your audience and every person
+    gets their own issue — real reporting, chosen and written for their role,
+    their company and their market. The same coverage publishes to your site
+    as a feed and an embed, so your domain keeps producing the topical content
+    your audience and search engines come back for.
+  </p>
+
+  <p class="price">$25<span>/month</span></p>
+
+  <p>
+    One company. Unlimited recipients.
+    Publish your feed once 10 stakeholders are on board.
+    Cancel future renewals online.
+  </p>
+
+  <form id="login-form" class="signup">
+    <label for="email">Work email</label>
+
+    <div class="field-row">
+      <input
+        id="email"
+        name="email"
+        type="email"
+        autocomplete="email"
+        placeholder="you@company.com"
+        required
+      >
+      <button>Start my newsletter →</button>
+    </div>
+  </form>
+
+  <p class="small">
+    Sign in by email. Preview before checkout.
+    No card needed to sign in.
+  </p>
+
+  <p id="message" role="status"></p>
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h2>Stay relevant</h2>
+    <p>
+      Your industry moves whether or not you are talking about it. A daily
+      briefing on your market, your competitors and the technologies your
+      buyers care about keeps your team fluent in the conversation their
+      customers are already having.
+    </p>
+  </article>
+
+  <article class="card">
+    <h2>Build topical authority</h2>
+    <p>
+      Every issue also publishes to your domain as hosted stories, a branded
+      RSS feed and an embeddable widget. Consistent, on-topic coverage is what
+      tells readers — and search engines — that your site is a place your
+      subject is actually covered.
+    </p>
+  </article>
+
+  <article class="card">
+    <h2>Keep readers reading</h2>
+    <p>
+      A newsletter people finish is one that opens with something meant for
+      them. That is the whole idea behind the name: one reader, one issue,
+      assembled for them rather than for a list.
+    </p>
+  </article>
+</section>
+
+<section class="card">
+  <p class="eyebrow">PERSONALISED FOR EVERY READER</p>
+  <h2>One audience. A different newsletter each.</h2>
+
+  <p>
+    Upload your list and we enrich it — name, job title, company, industry.
+    Each morning, every reader's issue is assembled for them: the stories
+    chosen and ordered for someone in their role, at a company like theirs,
+    in their market. A VP of Engineering and a Head of Sales at the same
+    company open genuinely different newsletters.
+  </p>
+
+  <ul>
+    <li>Industry, competitor and keyword coverage you choose</li>
+    <li>Stories selected per reader from their role, company and market</li>
+    <li>Original write-ups of each story, crediting and linking the publisher</li>
+    <li>Unlimited confirmed recipients — no per-seat pricing</li>
+    <li>A branded feed, an embeddable widget and hosted stories on your site</li>
+  </ul>
+
+  <p class="small">
+    Summaries are based on available source material and may contain errors.
+    Original reporting remains with the linked publishers.
+  </p>
+</section>
+
+<section class="card">
+  <p class="eyebrow">HOW THE PRICE STAYS AT $25</p>
+  <h2>Sponsored stories pay for the rest.</h2>
+
+  <p>
+    Each issue carries a clearly marked sponsored story and a small number of
+    ad placements, sold and served by Rnews1. That advertising is what keeps a
+    fully personalised newsletter at a flat $25 a month however large your
+    audience grows.
+  </p>
+
+  <p class="small">
+    Sponsored placements are always labelled and never presented as your own
+    editorial. Advertisers can target by professional role and industry, so a
+    reader sees advertising relevant to their job rather than the same generic
+    banner as everyone else. Your list is never sold or shared, and advertisers
+    never see who received their ad. If you need ad-free issues under your own
+    branding, that is what the enterprise plan is for.
+  </p>
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h2>Is this another newsletter tool?</h2>
+    <p>
+      Newsletter tools send what you write. Rnews1 writes it — you choose the
+      topics and upload the audience, and the issues arrive every morning
+      without anyone on your team drafting one.
+    </p>
+  </article>
+
+  <article class="card">
+    <h2>What happens after signup?</h2>
+    <p>
+      Confirm your email, enter your company domain, choose your topics,
+      preview the coverage, then activate your $25/month subscription.
+      Add 10 stakeholders from your company and your feed goes live.
+    </p>
+  </article>
+
+  <article class="card">
+    <h2>Need a custom deployment?</h2>
+    <p>
+      Enterprise engagements start at $10,000, subject to scope:
+      ad-free issues, dedicated hosting, custom domains, unbranded embeds,
+      your own sponsors, and advanced exclusions.
+    </p>
+
+    <a href="mailto:<%= supportEmail %>">
+      Discuss enterprise →
+    </a>
+  </article>
+</section>
+
+<script src="/app.js" defer></script>
+
+<%- include("../partials/footer") %>

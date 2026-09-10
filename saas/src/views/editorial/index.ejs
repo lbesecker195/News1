@@ -1,0 +1,70 @@
+<%- include("../partials/header", { htmlLang: language, dir: dir }) %>
+
+<header class="archive-head">
+  <h1><%= heading %></h1>
+  <% if (intro) { %><p class="standfirst"><%= intro %></p><% } %>
+</header>
+
+<% if (categories.length) { %>
+  <nav class="topics" aria-label="Sections">
+    <a href="/<%= language %>"<%= category ? "" : ' aria-current="page"' %>>All</a>
+    <% for (const row of categories) { %>
+      <a href="/<%= language %>/<%= row.category.toLowerCase() %>"
+         <%= category === row.category ? 'aria-current="page"' : "" %>><%= row.category %></a>
+    <% } %>
+  </nav>
+<% } %>
+
+<% if (!items.length) { %>
+  <p>Nothing published here yet.</p>
+<% } %>
+
+<%
+  /*
+   * The most recent piece is given room — a reader arriving at a list of
+   * equal-weight rows has no obvious place to start, and a page with no
+   * obvious place to start is a page people leave.
+   */
+  const [lead, ...rest] = items;
+%>
+
+<% if (lead) { %>
+  <a class="lead-entry" href="<%= lead.href %>">
+    <span class="kicker">
+      <%= lead.category %> <span class="dot">·</span>
+      <time datetime="<%= lead.date_slug %>"><%= lead.date_slug %></time>
+      <span class="dot">·</span> <%= lead.minutes %> min read
+    </span>
+    <span class="lead-title"><%= lead.headline %></span>
+    <% if (lead.standfirst) { %>
+      <span class="lead-standfirst"><%= lead.standfirst %></span>
+    <% } %>
+  </a>
+<% } %>
+
+<% if (rest.length) { %>
+  <div class="entries">
+    <% for (const item of rest) { %>
+      <a class="entry" href="<%= item.href %>">
+        <span class="kicker">
+          <%= item.category %> <span class="dot">·</span>
+          <time datetime="<%= item.date_slug %>"><%= item.date_slug %></time>
+          <span class="dot">·</span> <%= item.minutes %> min
+        </span>
+        <span class="entry-title"><%= item.headline %></span>
+        <% if (item.standfirst) { %>
+          <span class="entry-standfirst"><%= item.standfirst %></span>
+        <% } %>
+      </a>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (page > 1 || more) { %>
+  <nav class="pager" aria-label="Pagination">
+    <% if (page > 1) { %><a href="?page=<%= page - 1 %>">← Newer</a><% } %>
+    <% if (more) { %><a href="?page=<%= page + 1 %>">Older →</a><% } %>
+  </nav>
+<% } %>
+
+<%- include("../partials/footer") %>

@@ -1,0 +1,124 @@
+<%- include("../partials/header") %>
+
+<h1>Your company briefing</h1>
+<p id="message" role="status"></p>
+
+<section class="card">
+  <h2>1. Choose your focus</h2>
+
+  <form id="company-form">
+    <label>
+      Company name
+      <input name="name" required maxlength="100">
+    </label>
+
+    <label>
+      Company domain
+      <input name="domain" required placeholder="example.com">
+    </label>
+
+    <label>
+      Industry
+      <input name="industry" required maxlength="100"
+             placeholder="Industrial robotics">
+    </label>
+
+    <label>
+      Keyword 1
+      <input name="keyword1" required maxlength="60"
+             placeholder="warehouse automation">
+    </label>
+
+    <label>
+      Keyword 2
+      <input name="keyword2" required maxlength="60"
+             placeholder="grippers">
+    </label>
+
+    <label>
+      Briefing language
+      <select name="language">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+      </select>
+    </label>
+
+    <p class="small">
+      One industry and two keywords. Three stories a day are written from them.
+    </p>
+
+    <button type="button" id="suggest">Suggest topics</button>
+    <button>Save and prepare preview</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>2. Preview and activate</h2>
+
+  <div id="preview">Save your topics to prepare a preview.</div>
+
+  <button id="refresh-preview">Refresh preview</button>
+
+  <p id="billing-status"></p>
+
+  <button id="checkout" hidden>Activate for $25/month with PayPal →</button>
+  <button id="cancel" hidden>Cancel renewal</button>
+</section>
+
+<section class="card">
+  <h2>3. Add your stakeholders</h2>
+
+  <p>
+    Your feed publishes once 10 people from your company are on board — you
+    plus 9 colleagues. Getting the right stakeholders reading the briefing is
+    what makes it useful across the business.
+  </p>
+
+  <p id="stakeholder-state" class="small"></p>
+
+  <p class="small">
+    Add as many recipients as you like beyond the first 10. Every issue carries
+    a one-click unsubscribe, and an address that opts out or bounces is
+    suppressed across the whole platform and cannot be re-added.
+  </p>
+
+  <form id="invite-form">
+    <label>
+      Stakeholder email
+      <input name="email" type="email" required>
+    </label>
+
+    <label class="check">
+      <input name="authorised" type="checkbox" required>
+      I have the authority to add this person to this list and to send them
+      this newsletter.
+    </label>
+
+    <button>Add recipient</button>
+  </form>
+
+  <ul id="subscribers"></ul>
+</section>
+
+<section class="card">
+  <h2>Publish your feed</h2>
+
+  <p id="publish-state" class="small"></p>
+
+  <p id="feed-links"></p>
+
+  <label>
+    Iframe embed
+    <textarea id="embed-code" readonly></textarea>
+  </label>
+
+  <button id="copy-digest">Copy branded digest</button>
+</section>
+
+<button id="logout">Sign out</button>
+
+<script src="/app.js" defer></script>
+
+<%- include("../partials/footer") %>
