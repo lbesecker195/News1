@@ -1,0 +1,26 @@
+<header class="archive-head">
+  <h1><%= @heading %></h1>
+  <p :if={@intro not in [nil, ""]} class="standfirst"><%= @intro %></p>
+</header>
+<nav :if={@categories != []} class="topics" aria-label="Sections">
+  <a href={"/" <> @language} aria-current={if is_nil(@category), do: "page"}>All</a>
+  <a :for={row <- @categories} href={"/" <> @language <> "/" <> lower(row.category)} aria-current={if @category == row.category, do: "page"}><%= row.category %></a>
+</nav>
+<p :if={@items == []}>Nothing published here yet.</p>
+<% {lead, rest} = case @items, do: ([] -> {nil, []}; [l | r] -> {l, r}) %>
+<a :if={lead} class="lead-entry" href={lead.href}>
+  <span class="kicker"><%= lead.category %> <span class="dot">·</span> <time datetime={lead.date_slug}><%= lead.date_slug %></time> <span class="dot">·</span> <%= lead.minutes %> min read</span>
+  <span class="lead-title"><%= lead.headline %></span>
+  <span :if={lead.standfirst not in [nil, ""]} class="lead-standfirst"><%= lead.standfirst %></span>
+</a>
+<div :if={rest != []} class="entries">
+  <a :for={item <- rest} class="entry" href={item.href}>
+    <span class="kicker"><%= item.category %> <span class="dot">·</span> <time datetime={item.date_slug}><%= item.date_slug %></time> <span class="dot">·</span> <%= item.minutes %> min</span>
+    <span class="entry-title"><%= item.headline %></span>
+    <span :if={item.standfirst not in [nil, ""]} class="entry-standfirst"><%= item.standfirst %></span>
+  </a>
+</div>
+<nav :if={@page > 1 or @more} class="pager" aria-label="Pagination">
+  <a :if={@page > 1} href={"?page=" <> to_string(@page - 1)}>← Newer</a>
+  <a :if={@more} href={"?page=" <> to_string(@page + 1)}>Older →</a>
+</nav>

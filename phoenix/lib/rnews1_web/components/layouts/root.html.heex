@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang={assigns[:html_lang] || "en"} dir={assigns[:dir] || "ltr"}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <%= if assigns[:indexable] do %>
+    <meta name="description" content={@brand.description} />
+  <% else %>
+    <meta name="robots" content="noindex" />
+  <% end %>
+  <title><%= assigns[:page_title] || "Rnews1" %> — <%= @brand.name %></title>
+  <%= if assigns[:canonical_url] do %>
+    <link rel="canonical" href={@canonical_url} />
+  <% end %>
+  <%= for alt <- assigns[:alternates] || [] do %>
+    <link rel="alternate" hreflang={alt.language} href={alt.url} />
+    <%= if alt.language == "en" do %>
+      <link rel="alternate" hreflang="x-default" href={alt.url} />
+    <% end %>
+  <% end %>
+  <link rel="stylesheet" href="/site.css" />
+  <%= if assigns[:track] != false do %>
+    <script src="/track.js" defer></script>
+  <% end %>
+  <%= if analytics = Rnews1Web.Analytics.for_page(assigns) do %>
+    <script src={analytics.src} data-site={analytics.site} data-project={analytics.project} data-forms="false" defer></script>
+  <% end %>
+</head>
+<%
+  offsite = assigns[:offsite] == true
+  site = assigns[:site]
+  home = cond do
+    assigns[:archive] -> "/"
+    offsite -> @app_origin <> "/"
+    true -> "/"
+  end
+  root = if offsite, do: @app_origin, else: ""
+  chrome = assigns[:chrome] != false
+  tenant = site && site[:tenant]
+%>
+<body class={assigns[:body_class] || ""}>
+  <nav>
+    <%= if tenant do %>
+      <a class="brand" href={site.origin <> "/"}>
+        <%= tenant.name || "Briefing" %><span> / briefing</span>
+      </a>
+      <%= if chrome do %>
+        <span class="nav-links"><a href={site.origin <> "/feed.xml"}>RSS</a></span>
+      <% end %>
+    <% else %>
+      <a class="brand" href={home}><%= @brand.name %><span> / <%= @brand.tagline %></span></a>
+      <%= if chrome do %>
+        <span class="nav-links">
+          <%= if assigns[:signed_in] do %>
+            <a href={root <> "/app"}>Dashboard</a>
+          <% else %>
+            <a href={root <> "/login"}>Sign in</a>
+          <% end %>
+        </span>
+      <% end %>
+    <% end %>
+  </nav>
+  <main>
+    <%= @inner_content %>
+  </main>
+  <footer>
+    <%= if tenant && tenant.domain do %>
+      <a href={"https://" <> tenant.domain} rel="noopener"><%= tenant.name %></a> ·
+    <% end %>
+    <%= if assigns[:branding] != false do %>
+      <a href={root <> "/"}>Powered by Rnews1</a> ·
+    <% end %>
+    <%= if chrome && !tenant do %>
+      <%= if assigns[:signed_in] do %>
+        <a href={root <> "/app"}>Dashboard</a> ·
+      <% else %>
+        <a href={root <> "/login"}>Sign in or create an account</a> ·
+      <% end %>
+    <% end %>
+    <a href={root <> "/privacy"}>Privacy</a> ·
+    <a href={root <> "/terms"}>Terms</a>
+  </footer>
+</body>
+</html>

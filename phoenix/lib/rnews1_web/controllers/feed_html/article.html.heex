@@ -1,0 +1,16 @@
+<article class="story">
+  <h1><%= @item.title %></h1>
+  <p class="lead"><%= @item.summary %></p>
+  <%= for paragraph <- String.split(to_string(@item.body || ""), ~r/\n{2,}/), String.trim(paragraph) != "" do %>
+    <p><%= String.trim(paragraph) %></p>
+  <% end %>
+  <p class="small">
+    Reported by <%= @item.source %> ·
+    <a href={@item.source_url} rel="noopener noreferrer">Read the original coverage</a>
+  </p>
+</article>
+<p>
+  Selected for <a href={"https://" <> to_string(@tenant.domain)} rel="noopener"><%= @tenant.name %></a>.
+  <a href={@site_url}>More stories</a>.
+</p>
+<p class="small">Written by Rnews1 from published reporting, not original journalism. Consult the linked publisher for the full story.</p>

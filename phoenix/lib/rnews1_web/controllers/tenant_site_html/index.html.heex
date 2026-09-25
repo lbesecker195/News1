@@ -1,0 +1,8 @@
+<header class="site-head">
+  <p class="eyebrow">Daily briefing</p>
+  <h1><%= @tenant.name %></h1>
+  <p :if={@following != ""} class="lead">Following <%= @following %>.</p>
+  <p class="small">Real news, written for the people at <%= @tenant.name %> · <a href={@feed_url}>Subscribe by RSS</a></p>
+</header>
+<p :if={@items == []} class="small">No stories yet today. The first issue is being prepared.</p>
+<Rnews1Web.FeedHTML.news_item :for={item <- @items} item={item} />

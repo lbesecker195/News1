@@ -1,0 +1,706 @@
+/*
+ * One stylesheet for every server-rendered page. Loaded by partials/header.ejs,
+ * including inside the customer-facing embed, so it must stay small and make
+ * no assumptions about the surrounding page.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --ink: #16181d;
+  --muted: #5b6270;
+  --line: #e4e6eb;
+  --paper: #ffffff;
+  --ground: #f6f7f9;
+  --accent: #1a4fd6;
+  --accent-ink: #ffffff;
+  --danger: #b4232a;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e9ebef;
+    --muted: #a2a9b8;
+    --line: #2a2e37;
+    --paper: #1a1d23;
+    --ground: #121419;
+    --accent: #7ea3ff;
+    --accent-ink: #0d1017;
+    --danger: #ff8a8a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+        Roboto, Helvetica, Arial, sans-serif;
+}
+
+nav, main, footer {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+nav {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 20px;
+  font-weight: 600;
+}
+
+nav a { text-decoration: none; color: var(--ink); }
+nav .brand span { color: var(--muted); font-weight: 400; }
+
+.nav-links {
+  display: flex;
+  gap: 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav-links a { color: var(--accent); }
+.nav-links a:hover { text-decoration: underline; }
+
+main { padding-bottom: 48px; }
+
+footer {
+  padding-block: 24px 40px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+  /* More links than there used to be; let them wrap rather than overflow. */
+  line-height: 2;
+}
+
+a { color: var(--accent); }
+
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 12px; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+h3 { font-size: 1rem; margin: 0 0 4px; }
+p { margin: 0 0 12px; }
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin-bottom: 20px;
+}
+
+.grid .card { margin-bottom: 0; }
+
+.hero { padding: 24px 0 8px; }
+.hero h1 { font-size: 2.4rem; }
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.lead { font-size: 1.1rem; color: var(--muted); max-width: 34rem; }
+
+.price { font-size: 2rem; font-weight: 700; margin: 16px 0 4px; }
+.price span { font-size: 1rem; font-weight: 400; color: var(--muted); }
+
+.small { font-size: 0.85rem; color: var(--muted); }
+
+label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+label.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+input, select, textarea, button {
+  font: inherit;
+  color: inherit;
+}
+
+input:not([type=checkbox]), select, textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 11px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+textarea { min-height: 5rem; resize: vertical; }
+
+label.check input { margin-top: 5px; }
+
+button {
+  padding: 10px 16px;
+  margin: 0 8px 8px 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button[type=button], #logout, #cancel, #refresh-preview {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+button:disabled { opacity: 0.55; cursor: progress; }
+
+.signup { max-width: 34rem; margin-top: 20px; }
+
+/*
+ * Input and its call to action sit on one line. The input takes the slack
+ * (min-width:0 lets it shrink below its default size inside a flex row) and
+ * the button keeps its natural width.
+ */
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.field-row input:not([type=checkbox]) {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  margin-top: 0;
+}
+
+.field-row button {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Below roughly 30rem the pair no longer fits, so it stacks. */
+@media (max-width: 30rem) {
+  .field-row { flex-direction: column; }
+  .field-row button { width: 100%; }
+}
+
+/* ---- editorial archive ------------------------------------------------
+ *
+ * These pages exist to be read end to end, so the typography is set for
+ * sustained reading rather than for scanning: a serif face, a measure around
+ * 68 characters, and generous leading.
+ *
+ * The serif is a system stack on purpose. A web font is a render-blocking
+ * request before the first word appears, and a reader who waits is a reader
+ * who leaves — the fastest text is the text already on the machine.
+ * ---------------------------------------------------------------------- */
+
+:root {
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Charter,
+           Georgia, "Times New Roman", serif;
+
+  /* The reading column: about 68 characters at the body size. */
+  --measure-prose: 34rem;
+
+  /* Everything else on a reading page — listings, card rows, the masthead. */
+  --measure-reading: 46rem;
+}
+
+/*
+ * A reading page is narrower than the rest of the site.
+ *
+ * The article column was 544px pinned to the left of an 896px container, which
+ * left a 212px gutter on one side and 524px on the other. Narrowing the whole
+ * page — masthead and footer included — puts the text on the same axis as the
+ * chrome above it, so the column reads as centred rather than as content that
+ * failed to fill the page.
+ */
+.reading nav,
+.reading main,
+.reading footer {
+  max-width: var(--measure-reading);
+}
+
+.progress {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 3px;
+  background: transparent;
+  margin-bottom: -3px;
+}
+
+.progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 90ms linear;
+}
+
+/*
+ * Where the browser supports it, the bar is driven by the scroll position
+ * itself rather than by a script: it runs off the main thread, cannot fall
+ * behind fast scrolling, and needs no listener at all. article.js checks for
+ * this and does nothing when it is available.
+ */
+@supports (animation-timeline: scroll()) {
+  .progress span {
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    transition: none;
+    animation: read-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+
+  /* An RTL page fills from the right, where its reader starts. */
+  [dir="rtl"] .progress span { transform-origin: 100% 50%; }
+}
+
+@keyframes read-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.story {
+  max-width: var(--measure-prose);
+  margin-inline: auto;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  align-items: baseline;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.kicker a { color: var(--accent); text-decoration: none; }
+.kicker a:hover { text-decoration: underline; }
+.kicker .dot { opacity: 0.5; }
+
+.story h1 {
+  font-family: var(--serif);
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 16px;
+  text-wrap: balance;
+}
+
+.standfirst {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 28px;
+  max-width: var(--measure-prose);
+}
+
+/* The article body. Everything here is tuned for reading, not for density. */
+.prose {
+  font-family: var(--serif);
+  font-size: 1.19rem;
+  line-height: 1.72;
+}
+
+.prose p { margin: 0 0 1.15em; max-width: none; }
+
+.prose h2, .prose h3 {
+  font-family: var(--serif);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  /* Space above a heading, little below: it belongs to what follows. */
+  margin: 1.9em 0 0.5em;
+  text-wrap: balance;
+}
+
+.prose h2 { font-size: 1.42rem; }
+.prose h3 { font-size: 1.16rem; }
+
+.prose strong { font-weight: 700; }
+
+.prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+.prose a:hover { color: var(--accent); }
+
+.prose blockquote {
+  margin: 1.6em 0;
+  padding-left: 1.1em;
+  border-inline-start: 3px solid var(--accent);
+  font-style: italic;
+  color: var(--muted);
+}
+
+.prose ul, .prose ol { margin: 0 0 1.15em; padding-inline-start: 1.4em; }
+.prose li { margin-bottom: 0.4em; max-width: none; }
+
+.prose code {
+  font-size: 0.9em;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+}
+
+.tags {
+  margin: 32px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  margin: 0 6px 6px 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---- what to read next ---------------------------------------------- */
+
+.continue, .locales {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 2px solid var(--ink);
+}
+
+.continue h2, .locales h2 {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 20px;
+  border: 0;
+  padding: 0;
+}
+
+.continue-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.next {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.next:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+.next-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.next-title {
+  font-family: var(--serif);
+  font-size: 1.08rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.next-standfirst {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/*
+ * Eleven languages, several in scripts that set wider than Latin. Same
+ * treatment as the section bar: one line, scrolled, never wrapped.
+ */
+.locale-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+[dir="rtl"] .locale-list {
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+
+.locale-list::-webkit-scrollbar { display: none; }
+
+.locale-list a {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.locale-list a:hover { border-color: var(--accent); }
+
+/* ---- archive listing ------------------------------------------------- */
+
+.archive-head { max-width: var(--measure-prose); margin-inline: auto; }
+
+.archive-head h1 {
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  margin: 0 0 10px;
+}
+
+/*
+ * Thirteen sections will not fit on one line at this measure, and a section
+ * bar that wraps onto a second row stops reading as navigation and starts
+ * reading as content. It scrolls sideways instead — the pattern every news
+ * front page uses — so it stays one line at any width.
+ */
+.topics {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 18px;
+  padding: 16px 0;
+  margin-bottom: 24px;
+  border-block: 1px solid var(--line);
+  font-size: 0.88rem;
+
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* Fades the trailing edge, so it reads as continuing rather than cut off. */
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+[dir="rtl"] .topics {
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+
+.topics::-webkit-scrollbar { display: none; }
+.topics > a { flex: 0 0 auto; white-space: nowrap; }
+
+.topics a { color: var(--muted); text-decoration: none; }
+.topics a:hover { color: var(--ink); }
+.topics a[aria-current] { color: var(--ink); font-weight: 600; }
+
+.lead-entry, .entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.lead-entry {
+  padding: 8px 0 28px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.lead-title {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.18;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.lead-standfirst {
+  font-family: var(--serif);
+  font-size: 1.08rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.lead-entry:hover .lead-title, .entry:hover .entry-title {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.entries { display: flex; flex-direction: column; }
+
+.entry {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.entry .kicker { margin-bottom: 0; }
+
+.entry-title {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  line-height: 1.28;
+  font-weight: 600;
+}
+
+.entry-standfirst { color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
+
+.pager { display: flex; gap: 24px; padding-top: 28px; }
+
+.signin { max-width: 34rem; }
+.signin .lead { font-size: 1rem; }
+.signin #login-form { margin: 20px 0 0; }
+.signin ul { margin-top: 14px; }
+
+ul, ol { padding-left: 20px; margin: 0 0 12px; }
+ul { padding-left: 20px; margin: 0 0 12px; }
+#subscribers { list-style: none; padding: 0; }
+#subscribers li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+#subscribers button { margin: 0; padding: 5px 10px; font-size: 0.85rem; }
+
+#preview article {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+#message:not(:empty) {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+#message.error { color: var(--danger); border-color: currentColor; }
+
+.small.ok { color: var(--accent); }
+.small.warn { color: var(--danger); }
+
+#feed-links { overflow-wrap: anywhere; }
+
+
+/* ---- the site card and tenant sites ------------------------------------ */
+
+.site-address { font-weight: 600; font-size: 1.05rem; }
+.site-address .small { font-weight: 400; }
+
+.affix { display: flex; align-items: center; gap: 8px; }
+.affix input { flex: 1 1 auto; min-width: 0; }
+.affix .suffix { color: var(--muted); white-space: nowrap; }
+
+.dns { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 0.9rem; }
+.dns th { text-align: left; font-weight: 600; color: var(--muted); font-size: 0.75rem;
+          letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 8px 4px 0; }
+.dns td { padding: 6px 8px 6px 0; border-top: 1px solid var(--line); vertical-align: top;
+          word-break: break-all; }
+.dns code, .site-card code { font-size: 0.9em; }
+
+#site-card h3 { margin-top: 20px; }
+
+.badge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.badge.ok { border-color: var(--accent); color: var(--accent); }
+
+/* A button that is really a second way to submit, not a second action. */
+button.link {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button.link:hover { text-decoration: none; }
+
+#password-card button[type=button] { margin-inline-start: 8px; }
+
+#domain-form:has(input:disabled) { opacity: 0.6; }
+
+.site-head { padding: 8px 0 20px; }
+.site-head .eyebrow { margin: 0 0 4px; }
+.site-head h1 { margin-bottom: 6px; }
+
+/*
+ * The preview, side by side: the written stories on the left, the tenant's own
+ * embed as readers actually receive it on the right. Two readable columns need
+ * room, so below 52rem they stack rather than shrink.
+ */
+.preview-split {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 52rem) {
+  .preview-split { grid-template-columns: 1fr 1fr; }
+}
+
+.preview-frame { margin: 0; }
+
+.preview-frame iframe {
+  display: block;
+  width: 100%;
+  height: 22rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.preview-frame figcaption { margin-top: 6px; }

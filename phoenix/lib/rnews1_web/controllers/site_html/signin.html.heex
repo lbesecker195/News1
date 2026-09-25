@@ -1,0 +1,32 @@
+<section class="card signin">
+  <h1><%= @heading %></h1>
+  <p class="lead">Enter your work email. If you have set a password, use it; if you have not, we send a link that signs you in — the same link whether you have used Rnews1 before or not.</p>
+  <form id="login-form">
+    <label for="email">Work email</label>
+    <input id="email" name="email" type="email" autocomplete="email" placeholder="you@company.com" required autofocus />
+    <label for="password">Password <span class="small">(if you have set one)</span></label>
+    <div class="field-row">
+      <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Leave empty to be emailed a link" />
+      <button>Sign in →</button>
+    </div>
+    <p class="small"><button type="button" id="email-link" class="link">Email me a sign-in link instead</button></p>
+  </form>
+  <p id="message" role="status"></p>
+  <ul class="small">
+    <li>A sign-in link works once and expires after 20 minutes.</li>
+    <li>Forgotten your password? Use the link — then set a new one.</li>
+    <li>No card is needed to sign in or to preview your coverage.</li>
+    <li>New here? Following the link creates your account — there is nothing separate to register.</li>
+  </ul>
+</section>
+<section class="card">
+  <h2>What happens after you sign in</h2>
+  <ol>
+    <li>Choose one industry and two keywords to follow.</li>
+    <li>Preview the coverage before you pay anything.</li>
+    <li>Activate for $25/month, then upload the audience you send to.</li>
+    <li>Add 10 stakeholders from your company and your feed goes live.</li>
+  </ol>
+  <p class="small">Staff looking for the ad server want <a href="/admin/login">staff sign in</a>.</p>
+</section>
+<script src="/app.js" defer></script>

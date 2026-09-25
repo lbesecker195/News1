@@ -1,0 +1,54 @@
+{
+  "$comment": "Copy and layout for the briefing landing page at /brief/:id and its PDF. Edit this rather than the template \u2014 the page is assembled from the blocks below, in order. Restart is not needed in development; the file is re-read when it changes.",
+  "brand": {
+    "name": "rnews1",
+    "tagline": "Real News, made for One.",
+    "description": "A newsletter written for one reader at a time. Real reporting, chosen and written for the person opening it \u2014 plus a branded feed and website embed. $25/month."
+  },
+  "archive": {
+    "title": "Real News, Made for One",
+    "intro": "Every story here is written for one reader at a time \u2014 real reporting on the world, chosen and written for the person opening it.",
+    "sectionIntro": "{{section}} reporting, written for the person reading it."
+  },
+  "report": {
+    "title": "Daily Briefing",
+    "eyebrow": "{{company}}",
+    "footnote": "Every headline opens the full story. Written by Rnews1 from published reporting, with each publisher named on the story page.",
+    "labels": {
+      "reportedBy": "Reported by",
+      "readStory": "Read the full story",
+      "alsoToday": "Also today",
+      "storiesToday": "stories today",
+      "preparedFor": "Prepared for",
+      "topics": "Following",
+      "whyThese": "Why these sections"
+    },
+    "theme": {
+      "accent": "#1a4fd6",
+      "ink": "#14181f",
+      "muted": "#5a6472",
+      "paper": "#ffffff"
+    },
+    "print": {
+      "pageSize": "A4",
+      "margin": "16mm"
+    },
+    "blocks": [
+      {
+        "type": "masthead"
+      },
+      {
+        "type": "stories",
+        "limit": 8,
+        "hero": true,
+        "columns": 2
+      },
+      {
+        "type": "impact"
+      },
+      {
+        "type": "footer"
+      }
+    ]
+  }
+}

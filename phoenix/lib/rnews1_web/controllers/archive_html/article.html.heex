@@ -1,0 +1,33 @@
+<div class="progress" aria-hidden="true"><span id="read-progress"></span></div>
+<article class="story">
+  <p class="kicker">
+    <a href={"/" <> @language <> "/" <> lower(@story.category || "news")}><%= @story.category || "News" %></a>
+    <span class="dot">·</span>
+    <time datetime={@date}><%= @date %></time>
+    <span class="dot">·</span>
+    <span><%= @minutes %> min read</span>
+  </p>
+  <h1><%= @story.headline %></h1>
+  <p :if={@story.standfirst not in [nil, ""]} class="standfirst"><%= @story.standfirst %></p>
+  <div class="prose"><%= raw(@html) %></div>
+  <p :if={@story.tags not in [nil, []]} class="tags">
+    <span :for={tag <- Enum.take(@story.tags, 10)} class="tag"><%= tag %></span>
+  </p>
+</article>
+<section :if={@related != []} class="continue">
+  <h2>Continue reading</h2>
+  <div class="continue-grid">
+    <a :for={item <- @related} class="next" href={item.href}>
+      <span class="next-kicker"><%= item.category %> · <%= item.minutes %> min</span>
+      <span class="next-title"><%= item.headline %></span>
+      <span :if={item.standfirst not in [nil, ""]} class="next-standfirst"><%= item.standfirst %></span>
+    </a>
+  </div>
+</section>
+<section :if={length(@alternates) > 1} class="locales">
+  <h2>Read this in another language</h2>
+  <div class="locale-list">
+    <a :for={alt <- @alternates} :if={alt.language != @language} href={alt.url} hreflang={alt.language} lang={alt.language} dir={alt.dir}><%= alt.name %></a>
+  </div>
+</section>
+<script src="/article.js" defer></script>

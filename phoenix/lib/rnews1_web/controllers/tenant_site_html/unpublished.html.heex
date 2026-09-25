@@ -1,0 +1,8 @@
+<section class="card">
+  <h1><%= @tenant.name || "This briefing" %> is coming soon</h1>
+  <p>
+    This site goes live once <%= @required %> stakeholders have been added in the dashboard and the subscription is active.
+    If this is your briefing, finish setting it up at
+    <a href={@app_origin <> "/app"}><%= String.replace(@app_origin, ~r/^https?:\/\//, "") %>/app</a>.
+  </p>
+</section>
