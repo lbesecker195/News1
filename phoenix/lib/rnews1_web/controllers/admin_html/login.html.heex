@@ -1,0 +1,9 @@
+<section class="card" style="max-width:24rem;">
+  <h1>Staff sign in</h1>
+  <p :if={@error} class="small warn"><%= @error %></p>
+  <form method="post" action="/admin/login">
+    <label>Email <input name="email" type="email" autocomplete="username" required /></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+    <button>Sign in</button>
+  </form>
+</section>

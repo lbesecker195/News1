@@ -1,0 +1,61 @@
+# Rnews1 edge — Caddy, on-demand TLS for every host we serve.
+#
+#   app.rnews1.com        the app: marketing, dashboard, API, admin
+#   www.rnews1.com        the editorial archive, twelve languages
+#   {label}.rnews1.com    customer sites
+#   news.acme.com …       customers' own hostnames
+#
+# Certificates are issued per hostname at the first TLS handshake — no
+# wildcard, no DNS challenge, nothing to configure per tenant. Before issuing,
+# Caddy asks the app whether the host is ours; the app says yes for its own
+# host, every tenant's subdomain (including one still in its 30-day redirect
+# window), the archive, and every verified custom domain. Anyone pointing a stray
+# domain at this server gets a refused handshake, not a certificate.
+#
+# DNS:  *.rnews1.com and rnews1.com → this server. Customers CNAME to their
+#       {label}.rnews1.com. Set TRUST_PROXY=1 in the app's environment.
+#
+# The upstream below is the Node app. When nginx is installed, deploy.sh
+# rewrites it to 127.0.0.1:8080 — nginx caching in front of the app — and
+# only Rnews1 hosts take that path, so other sites on this box are untouched.
+#
+# Rate limits worth knowing: Let's Encrypt allows 50 new certificates per
+# registered domain per week, so 50 brand-new tenant subdomains a week is the
+# ceiling before Caddy's fallback issuer takes over. If sign-ups run hotter
+# than that, add a wildcard for *.rnews1.com and keep on-demand for custom
+# domains only.
+
+{
+  email ops@rnews1.com
+
+  on_demand_tls {
+    # Plain HTTP to the app on the loopback: no certificate needed to ask.
+    ask http://127.0.0.1:4000/.well-known/tls-ask
+  }
+}
+
+# The app and the archive get their certificates the ordinary way, at startup.
+app.rnews1.com, www.rnews1.com {
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:4000
+}
+
+# The bare apex is the archive's front door.
+rnews1.com {
+  redir https://www.rnews1.com{uri} permanent
+}
+
+# Everything else: a certificate on first visit, if the app vouches for it.
+https:// {
+  tls {
+    on_demand
+  }
+
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:4000
+}
+
+# Plain HTTP on any host goes to HTTPS on the same host.
+http:// {
+  redir https://{host}{uri} permanent
+}
