@@ -676,31 +676,3 @@ button.link:hover { text-decoration: none; }
 .site-head { padding: 8px 0 20px; }
 .site-head .eyebrow { margin: 0 0 4px; }
 .site-head h1 { margin-bottom: 6px; }
-
-/*
- * The preview, side by side: the written stories on the left, the tenant's own
- * embed as readers actually receive it on the right. Two readable columns need
- * room, so below 52rem they stack rather than shrink.
- */
-.preview-split {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 52rem) {
-  .preview-split { grid-template-columns: 1fr 1fr; }
-}
-
-.preview-frame { margin: 0; }
-
-.preview-frame iframe {
-  display: block;
-  width: 100%;
-  height: 22rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--paper);
-}
-
-.preview-frame figcaption { margin-top: 6px; }
