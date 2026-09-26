@@ -77,14 +77,26 @@ defmodule Rnews1.CLI do
     if unknown != [], do: raise("Unknown language(s): #{Enum.join(unknown, ", ")}. One of: #{Enum.join(Languages.codes(), ", ")}")
 
     created =
-      Publications.create(%{
-        slug: slug,
-        name: flag(rest, "--name") || slug,
-        hostname: hostname,
-        languages: languages,
-        tagline: flag(rest, "--tagline"),
-        sections: sections
-      })
+      case Publications.create(%{
+             slug: slug,
+             name: flag(rest, "--name") || slug,
+             hostname: hostname,
+             languages: languages,
+             tagline: flag(rest, "--tagline"),
+             sections: sections
+           }) do
+        {:error, :app_host} ->
+          raise("#{hostname} is the application's own host.")
+
+        {:error, :label_taken} ->
+          raise("#{hostname} belongs to a customer site, now or by redirect. Publishing there would take their site down.")
+
+        {:error, :custom_domain_taken} ->
+          raise("#{hostname} is a customer's verified custom domain.")
+
+        publication ->
+          publication
+      end
 
     IO.puts("\n#{created.name} — #{created.hostname}")
     IO.puts("  languages: #{Enum.join(created.languages, ", ")}")
