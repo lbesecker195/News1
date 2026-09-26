@@ -23,6 +23,17 @@ defmodule Rnews1.Application do
   # PayPal being live against a non-https origin. Neither is worth refusing to
   # serve over.
   defp boot do
+    # The archive is a publication row now. It is seeded by the migration with a
+    # hostname that cannot resolve, because its real one is configuration, so
+    # this is where it learns its address — and adopts the editorial stories
+    # written before the table existed.
+    try do
+      publication = Rnews1.Publications.ensure_default()
+      Logger.info("Publications: #{publication.name} at #{publication.hostname}")
+    rescue
+      e -> Logger.error("Could not reconcile the default publication: #{Exception.message(e)}")
+    end
+
     if Rnews1.Env.archive_tenant_email() do
       try do
         case Rnews1.House.ensure_house_account() do

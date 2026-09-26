@@ -1,25 +1,43 @@
 defmodule Rnews1Web.ArchiveController do
-  @moduledoc "The editorial archive, served at ARCHIVE_ORIGIN; the app host redirects here."
+  @moduledoc """
+  An editorial site. There is more than one now: the archive is the default
+  publication, and every additional news site on its own domain is another. The
+  publication comes from the host the request arrived on, and everything that
+  used to be read from ARCHIVE_ORIGIN — the origin in canonical and hreflang
+  URLs, which sections exist, which languages are published — is read from it.
+  """
   use Rnews1Web, :controller
-  alias Rnews1.{Content, Env, Stories}
-  alias Rnews1.Util.{Languages, Markdown, ReadingTime}
+  alias Rnews1.{Content, Env, Publications, Stories}
+  alias Rnews1.Util.{Hosts, Languages, Markdown, ReadingTime}
   alias Rnews1Web.Archive
 
   @page_size 24
   @date ~r/^\d{4}-\d{2}-\d{2}$/
 
   plug :put_brand
+  plug :put_publication
   plug :archive_redirect when action in [:article, :undated_article, :topic, :index]
 
   defp put_brand(conn, _), do: conn |> assign(:brand, Content.brand()) |> assign(:app_origin, Env.app_origin())
 
-  # On the app host the archive paths 301 to www — unless the archive shares the host.
+  # The host plug assigns the publication for an archive host. The app host
+  # reaches these actions too, on its way to a 301, and has none — it stands in
+  # for the default one so the redirect below has an origin to aim at.
+  defp put_publication(conn, _) do
+    publication = conn.assigns[:publication] || Publications.default() || Publications.ensure_default()
+
+    conn
+    |> assign(:publication, publication)
+    |> assign(:publication_origin, Hosts.publication_origin(publication))
+  end
+
+  # On the app host the archive paths 301 to the publication — unless it shares the host.
   defp archive_redirect(conn, _) do
     archive_on_app = Env.archive_host() == Env.app_host()
 
     if conn.assigns[:host_kind] != :archive and not archive_on_app and Stories.language?(conn.params["language"]) do
       conn
-      |> put_resp_header("location", Env.archive_origin() <> conn.request_path <> if(conn.query_string == "", do: "", else: "?" <> conn.query_string))
+      |> put_resp_header("location", conn.assigns.publication_origin <> conn.request_path <> if(conn.query_string == "", do: "", else: "?" <> conn.query_string))
       |> send_resp(301, "")
       |> halt()
     else
@@ -27,16 +45,25 @@ defmodule Rnews1Web.ArchiveController do
     end
   end
 
-  defp alternates(translations) do
-    Enum.map(translations, &%{language: &1.language, name: Languages.name(&1.language), dir: Languages.direction(&1.language), url: "#{Env.archive_origin()}/#{Archive.path_for(&1)}"})
+  # A language this publication does not run is a 404 here even when another
+  # publication runs it, so one site's locales never leak into another's URLs.
+  defp publishes?(conn, language), do: Stories.language?(language) and language in List.wrap(conn.assigns.publication.languages)
+
+  defp alternates(origin, translations) do
+    Enum.map(translations, &%{language: &1.language, name: Languages.name(&1.language), dir: Languages.direction(&1.language), url: "#{origin}/#{Archive.path_for(&1)}"})
   end
 
   defp for_card(row), do: row |> Map.put(:href, "/" <> Archive.path_for(row)) |> Map.put(:minutes, ReadingTime.from_length(row[:body_length]))
 
   def article(conn, %{"language" => language, "topic" => topic, "slug" => slug} = params) do
-    if not Stories.language?(language), do: fail!(404, "Page not found.")
-    story = Stories.find_editorial(%{language: language, slug: slug}) || fail!(404, "Article not found.")
-    canonical = "#{Env.archive_origin()}/#{Archive.path_for(story)}"
+    if not publishes?(conn, language), do: fail!(404, "Page not found.")
+    publication = conn.assigns.publication
+
+    story =
+      Stories.find_editorial(%{publication_id: publication.id, language: language, slug: slug}) ||
+        fail!(404, "Article not found.")
+
+    canonical = "#{conn.assigns.publication_origin}/#{Archive.path_for(story)}"
     date = params["date"]
 
     on_canonical =
@@ -48,7 +75,7 @@ defmodule Rnews1Web.ArchiveController do
       # the undated form is what the old Hugo site published.
       conn |> put_resp_header("location", canonical) |> send_resp(301, "")
     else
-      translations = Stories.translations_of(story.translation_key)
+      translations = Stories.translations_of(publication.id, story.translation_key)
       related = Stories.related_to(%{language: language, category: story.category, exclude_id: story.id, limit: 3})
 
       more =
@@ -58,8 +85,8 @@ defmodule Rnews1Web.ArchiveController do
 
       conn
       |> public_cache(600)
-      |> page(title: story.headline, html_lang: language, dir: Languages.direction(language), body_class: "reading", indexable: true, canonical_url: canonical, alternates: alternates(translations))
-      |> render(:article, story: story, date: Archive.date_of(story), minutes: ReadingTime.minutes(story.body), html: Markdown.render(story.body), related: Enum.map(more, &for_card/1), language: language, alternates: alternates(translations))
+      |> page(title: story.headline, html_lang: language, dir: Languages.direction(language), body_class: "reading", indexable: true, canonical_url: canonical, alternates: alternates(conn.assigns.publication_origin, translations))
+      |> render(:article, story: story, date: Archive.date_of(story), minutes: ReadingTime.minutes(story.body), html: Markdown.render(story.body), related: Enum.map(more, &for_card/1), language: language, alternates: alternates(conn.assigns.publication_origin, translations))
     end
   end
 
@@ -74,19 +101,37 @@ defmodule Rnews1Web.ArchiveController do
   end
 
   defp listing_index(conn, language, params) do
-    if not Stories.language?(language), do: fail!(404, "Page not found.")
+    if not publishes?(conn, language), do: fail!(404, "Page not found.")
     page_no = page_number(params)
-    items = Stories.list_editorial(%{language: language, limit: @page_size, offset: (page_no - 1) * @page_size})
+
+    items =
+      Stories.list_editorial(%{
+        publication_id: conn.assigns.publication.id,
+        language: language,
+        limit: @page_size,
+        offset: (page_no - 1) * @page_size
+      })
+
     if items == [] and page_no > 1, do: fail!(404, "Page not found.")
     archive = Content.archive()
+    title = conn.assigns.publication.name || archive.title
 
-    listing(conn, language, %{heading: archive.title, intro: archive.intro, title: archive.title, category: nil, items: items, page: page_no})
+    listing(conn, language, %{heading: title, intro: archive.intro, title: title, category: nil, items: items, page: page_no})
   end
 
   def topic(conn, %{"language" => language, "topic" => name} = params) do
-    if not Stories.language?(language), do: fail!(404, "Page not found.")
+    if not publishes?(conn, language), do: fail!(404, "Page not found.")
     page_no = page_number(params)
-    items = Stories.list_editorial(%{language: language, category: name, limit: @page_size, offset: (page_no - 1) * @page_size})
+
+    items =
+      Stories.list_editorial(%{
+        publication_id: conn.assigns.publication.id,
+        language: language,
+        category: name,
+        limit: @page_size,
+        offset: (page_no - 1) * @page_size
+      })
+
     if items == [], do: fail!(404, "Nothing published in this section.")
     section = hd(items).category || name
 
@@ -103,7 +148,7 @@ defmodule Rnews1Web.ArchiveController do
       language: language,
       category: opts.category,
       items: Enum.map(opts.items, &for_card/1),
-      categories: Stories.editorial_categories(language),
+      categories: Stories.editorial_categories(conn.assigns.publication.id, language),
       page: opts.page,
       more: length(opts.items) == @page_size
     )
@@ -119,7 +164,11 @@ defmodule Rnews1Web.ArchiveController do
   # ---- the archive host itself ----------------------------------------------------------
 
   def root(conn, _) do
-    language = conn |> get_req_header("accept-language") |> List.first() |> preferred_language()
+    # Negotiated against what this publication runs, not against all twelve:
+    # an English-only site must land an Arabic reader on English, not on a 404.
+    available = List.wrap(conn.assigns.publication.languages)
+    language = conn |> get_req_header("accept-language") |> List.first() |> preferred_language(available)
+
     conn |> put_resp_header("vary", "Accept-Language") |> no_store() |> redirect(to: "/#{language}")
   end
 
@@ -142,15 +191,19 @@ defmodule Rnews1Web.ArchiveController do
       if language == "", do: [], else: [{language, q, index}]
     end)
     |> Enum.sort_by(fn {_, q, index} -> {-q, index} end)
-    |> Enum.find_value("en", fn {language, _, _} -> if language in available, do: language end)
+    |> Enum.find_value(fallback_language(available), fn {language, _, _} -> if language in available, do: language end)
   end
+
+  # English when the publication runs it, otherwise whatever it does run: a
+  # site with no English has to send an unmatched reader somewhere real.
+  defp fallback_language(available), do: if("en" in available, do: "en", else: List.first(available) || "en")
 
   def robots(conn, _) do
-    conn |> public_cache(3600) |> text("User-agent: *\nAllow: /\n\nSitemap: #{Env.archive_origin()}/sitemap.xml\n")
+    conn |> public_cache(3600) |> text("User-agent: *\nAllow: /\n\nSitemap: #{conn.assigns.publication_origin}/sitemap.xml\n")
   end
 
-  defp archive_map do
-    rows = Stories.all_editorial()
+  defp archive_map(publication_id) do
+    rows = Stories.all_editorial(publication_id)
 
     groups = Enum.group_by(rows, &(&1.translation_key || "#{&1.language}:#{&1.slug}"))
 
@@ -163,21 +216,23 @@ defmodule Rnews1Web.ArchiveController do
   end
 
   def sitemap_index(conn, _) do
-    %{newest: newest} = archive_map()
+    %{newest: newest} = archive_map(conn.assigns.publication.id)
+    origin = conn.assigns.publication_origin
 
     sitemaps =
-      Stories.languages()
+      conn.assigns.publication.languages
+      |> List.wrap()
       |> Enum.filter(&Map.has_key?(newest, &1))
-      |> Enum.map(&%{loc: "#{Env.archive_origin()}/sitemap-#{&1}.xml", lastmod: newest[&1]})
+      |> Enum.map(&%{loc: "#{origin}/sitemap-#{&1}.xml", lastmod: newest[&1]})
 
     conn |> public_cache(3600) |> put_resp_content_type("application/xml") |> send_resp(200, Rnews1Web.Templates.sitemap_index(%{sitemaps: sitemaps}))
   end
 
   def sitemap(conn, %{"language" => language}) do
-    if not Stories.language?(language), do: fail!(404, "Page not found.")
-    %{groups: groups, newest: newest} = archive_map()
+    if not publishes?(conn, language), do: fail!(404, "Page not found.")
+    %{groups: groups, newest: newest} = archive_map(conn.assigns.publication.id)
     if not Map.has_key?(newest, language), do: fail!(404, "Nothing published in this language.")
-    origin = Env.archive_origin()
+    origin = conn.assigns.publication_origin
 
     urls =
       [%{loc: "#{origin}/#{language}", lastmod: newest[language], priority: "0.9"}] ++

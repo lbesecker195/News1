@@ -8,7 +8,7 @@ defmodule Rnews1Web.Plugs.Host do
   """
   @behaviour Plug
   import Plug.Conn
-  alias Rnews1.Sites
+  alias Rnews1.{Publications, Sites}
   alias Rnews1.Util.Hosts
 
   def init(opts), do: opts
@@ -21,40 +21,55 @@ defmodule Rnews1Web.Plugs.Host do
         assign(conn, :host_kind, :app)
 
       :archive ->
-        conn
-        |> assign(:host_kind, :archive)
-        |> assign(:archive, true)
-        |> assign(:offsite, true)
+        archive(conn, Publications.find_by_hostname(conn.host) || Publications.default())
 
       _ ->
-        tenant = lookup(where)
+        # A publication is looked up before a tenant. Both can hold a hostname
+        # that classify/1 calls :custom, and an editorial site of ours is not a
+        # customer's briefing — whichever row exists decides which router runs.
+        case Publications.find_by_hostname(where.host) do
+          %{} = publication -> archive(conn, publication)
+          nil -> tenant_host(conn, where)
+        end
+    end
+  end
 
-        cond do
-          is_nil(tenant) and where.kind == :subdomain and where.reserved ->
-            assign(conn, :host_kind, :app)
+  defp archive(conn, publication) do
+    conn
+    |> assign(:host_kind, :archive)
+    |> assign(:archive, true)
+    |> assign(:publication, publication)
+    |> assign(:offsite, true)
+  end
 
-          is_nil(tenant) ->
-            conn
-            |> assign(:host_kind, :site)
-            |> assign(:site, %{host: where.host, tenant: nil})
-            |> assign(:offsite, true)
+  defp tenant_host(conn, where) do
+    tenant = lookup(where)
 
-          true ->
-            origin = Hosts.site_origin(tenant)
+    cond do
+      is_nil(tenant) and where.kind == :subdomain and where.reserved ->
+        assign(conn, :host_kind, :app)
 
-            if URI.parse(origin).host != where.host do
-              conn
-              |> put_resp_header("location", origin <> conn.request_path <> query(conn))
-              |> send_resp(301, "")
-              |> halt()
-            else
-              site = %{host: where.host, tenant: tenant, origin: origin, published: Sites.published?(tenant)}
+      is_nil(tenant) ->
+        conn
+        |> assign(:host_kind, :site)
+        |> assign(:site, %{host: where.host, tenant: nil})
+        |> assign(:offsite, true)
 
-              conn
-              |> assign(:host_kind, :site)
-              |> assign(:site, site)
-              |> assign(:offsite, true)
-            end
+      true ->
+        origin = Hosts.site_origin(tenant)
+
+        if URI.parse(origin).host != where.host do
+          conn
+          |> put_resp_header("location", origin <> conn.request_path <> query(conn))
+          |> send_resp(301, "")
+          |> halt()
+        else
+          site = %{host: where.host, tenant: tenant, origin: origin, published: Sites.published?(tenant)}
+
+          conn
+          |> assign(:host_kind, :site)
+          |> assign(:site, site)
+          |> assign(:offsite, true)
         end
     end
   end

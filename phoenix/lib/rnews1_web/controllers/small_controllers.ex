@@ -147,6 +147,10 @@ defmodule Rnews1Web.DomainController do
     ok =
       cond do
         domain == "" or Regex.match?(~r/^\d{1,3}(\.\d{1,3}){3}$/, domain) or String.contains?(domain, ":") -> false
+        # One of our own news sites. Its hostname is arbitrary — it is whatever
+        # domain we bought — so classify/1 cannot recognise it and the edge has
+        # to be told here, or it would never get a certificate for it.
+        Rnews1.Publications.find_by_hostname(domain) -> true
         true ->
           where = Hosts.classify(domain)
           where.kind in [:app, :archive] or where[:reserved] == true or (where.kind != :none and Sites.servable_host?(where))

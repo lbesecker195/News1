@@ -125,7 +125,7 @@ defmodule Rnews1.PipelineTest do
       assert Enum.all?(rows, &(&1.origin == "editorial" and &1.slug == result.slug))
       # Only the source-language row carries the fingerprint; translations are the same coverage.
       assert Enum.count(rows, & &1.fingerprint) == 1
-      assert Stories.slug_taken?(result.slug)
+      assert Stories.slug_taken?(publication().id, result.slug)
 
       # The same source is never covered twice.
       assert Editorial.write_for_category("Business", languages: []).status in ["nothing_fresh", "published"]

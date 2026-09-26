@@ -5,7 +5,7 @@ defmodule Rnews1.Editorial do
   dropped; measured for verbatim overlap; never covered twice.
   """
   require Logger
-  alias Rnews1.{AI, Extract, News, Stories, StoryPipeline}
+  alias Rnews1.{AI, Extract, News, Publications, Stories, StoryPipeline}
   alias Rnews1.Util.{Languages, Overlap, Slug}
 
   @categories ~w(AI Business Compliance Cosmos Crypto Entertainment Health Science Sports Technology USA World)
@@ -36,13 +36,40 @@ defmodule Rnews1.Editorial do
 
   def match_category(name), do: Enum.find(@categories, &(String.downcase(&1) == String.downcase(to_string(name))))
 
+  @doc "The seed query for one of the archive's original twelve sections."
+  def query_for(category), do: Map.get(@queries, category)
+
+  @doc """
+  Writes one article for the archive's own section of that name. The archive is
+  a publication like any other now; this resolves it and hands over.
+  """
   def write_for_category(category, opts \\ []) do
-    languages = Keyword.get(opts, :languages, translation_languages())
+    publication = Keyword.get_lazy(opts, :publication, &Rnews1.Publications.ensure_default/0)
+
+    case Rnews1.Publications.match_section(publication.id, category) do
+      nil -> %{category: category, status: "unknown_category"}
+      section -> write_for_section(publication, section, opts)
+    end
+  end
+
+  @doc """
+  Writes one article for a section of a publication: discovery through its own
+  query, the rewrite, and a row per language the publication runs.
+  """
+  def write_for_section(publication, section, opts \\ []) do
+    category = section.name
+    query = section.query
+
+    languages =
+      Keyword.get_lazy(opts, :languages, fn ->
+        publication.languages |> List.wrap() |> Enum.reject(&(&1 == @source_language))
+      end)
+
     concurrency = Keyword.get(opts, :concurrency, @translation_concurrency)
     dry_run = Keyword.get(opts, :dry_run, false)
     now = Keyword.get(opts, :now, DateTime.utc_now())
 
-    case Map.get(@queries, category) do
+    case query do
       nil ->
         %{category: category, status: "unknown_category"}
 
@@ -65,7 +92,7 @@ defmodule Rnews1.Editorial do
                 }
 
               {:ok, candidate, article, written, run} ->
-                publish(category, candidate, article, written, run, languages, concurrency, dry_run, now)
+                publish(publication, category, candidate, article, written, run, languages, concurrency, dry_run, now)
             end
         end
     end
@@ -99,8 +126,8 @@ defmodule Rnews1.Editorial do
     end)
   end
 
-  defp publish(category, candidate, article, written, run, languages, concurrency, dry_run, now) do
-    slug = unique_slug(written.headline, category)
+  defp publish(publication, category, candidate, article, written, run, languages, concurrency, dry_run, now) do
+    slug = unique_slug(publication.id, written.headline, category)
 
     source_row =
       Map.merge(written, %{language: @source_language, fingerprint: candidate.mark, source_url: article.url || candidate.url, source_name: candidate.source})
@@ -127,6 +154,7 @@ defmodule Rnews1.Editorial do
         Enum.flat_map(rows, fn row ->
           saved =
             Stories.create_editorial(%{
+              publication_id: publication.id,
               language: row.language,
               slug: slug,
               translation_key: slug,
@@ -271,17 +299,21 @@ defmodule Rnews1.Editorial do
 
   def slugify(text), do: Slug.slugify(text)
 
-  defp unique_slug(headline, category) do
+  # Taken is per publication: two news sites may each run a "spring-collections"
+  # and neither should push the other into a numbered suffix.
+  defp unique_slug(publication_id, headline, category) do
     base =
       case slugify(headline) do
         "" -> (case slugify(category), do: ("" -> "story"; s -> s))
         s -> s
       end
 
-    if not Stories.slug_taken?(base) do
+    taken? = &Stories.slug_taken?(publication_id, &1)
+
+    if not taken?.(base) do
       base
     else
-      Enum.find_value(2..20, fn n -> if not Stories.slug_taken?("#{base}-#{n}"), do: "#{base}-#{n}" end) ||
+      Enum.find_value(2..20, fn n -> if not taken?.("#{base}-#{n}"), do: "#{base}-#{n}" end) ||
         "#{base}-#{Integer.to_string(System.os_time(:millisecond), 36)}"
     end
   end
@@ -303,13 +335,19 @@ defmodule Rnews1.Editorial do
           %{key: group.translation_key, status: "would_translate", from: source.language, missing: group.missing}
 
         source ->
+          # Only the locales this story's own publication runs. An English-only
+          # site must not be quietly translated into the archive's twelve just
+          # because the backfill was asked for them.
+          wanted = Enum.filter(group.missing, &(&1 in Publications.languages_of(source.publication_id)))
+
           {added, failed} =
-            Enum.reduce(group.missing, {[], []}, fn language, {added, failed} ->
+            Enum.reduce(wanted, {[], []}, fn language, {added, failed} ->
               translated = translate_article(%{article: %{headline: source.headline, standfirst: source.standfirst, body: source.body}, language: language, category: source.category})
 
               saved =
                 translated &&
                   Stories.create_editorial(%{
+                    publication_id: source.publication_id,
                     language: language,
                     slug: source.slug,
                     translation_key: group.translation_key,

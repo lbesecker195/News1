@@ -113,51 +113,71 @@ defmodule Rnews1.Stories do
 
   # ---- editorial content ----------------------------------------------------
 
-  def find_editorial(%{language: language, slug: slug}) do
+  # Every archive read is scoped to one publication. A site must never show
+  # another site's stories, and the hostname a request arrived on is the only
+  # thing that says which one it is — so the id is a required argument rather
+  # than an option with a default that could silently widen a query.
+
+  def find_editorial(%{publication_id: publication_id, language: language, slug: slug}) do
     DB.one(
-      "SELECT *, to_char(issue_date, 'YYYY-MM-DD') AS date_slug FROM stories WHERE origin = ANY($3) AND language = $1 AND slug = $2",
-      [language, slug, @archive_origins]
+      """
+      SELECT *, to_char(issue_date, 'YYYY-MM-DD') AS date_slug FROM stories
+      WHERE origin = ANY($4) AND publication_id = $3 AND language = $1 AND slug = $2
+      """,
+      [language, slug, publication_id, @archive_origins]
     )
   end
 
-  def translations_of(nil), do: []
+  def translations_of(_publication_id, nil), do: []
 
-  def translations_of(translation_key) do
+  def translations_of(publication_id, translation_key) do
     DB.all(
       """
       SELECT language, slug, category, headline, to_char(issue_date, 'YYYY-MM-DD') AS date_slug
-      FROM stories WHERE origin = ANY($2) AND translation_key = $1 ORDER BY language
+      FROM stories WHERE origin = ANY($3) AND publication_id = $2 AND translation_key = $1 ORDER BY language
       """,
-      [translation_key, @archive_origins]
+      [translation_key, publication_id, @archive_origins]
     )
   end
 
-  def list_editorial(%{language: language} = opts) do
+  def list_editorial(%{publication_id: publication_id, language: language} = opts) do
     DB.all(
       """
       SELECT id, language, slug, category, headline, standfirst, to_char(issue_date, 'YYYY-MM-DD') AS date_slug
       FROM stories
-      WHERE origin = ANY($5) AND language = $1 AND ($2::text IS NULL OR lower(category) = lower($2))
+      WHERE origin = ANY($5) AND publication_id = $6 AND language = $1
+        AND ($2::text IS NULL OR lower(category) = lower($2))
       ORDER BY published_at DESC LIMIT $3 OFFSET $4
       """,
-      [language, Map.get(opts, :category), Map.get(opts, :limit, 30), Map.get(opts, :offset, 0), @archive_origins]
+      [
+        language,
+        Map.get(opts, :category),
+        Map.get(opts, :limit, 30),
+        Map.get(opts, :offset, 0),
+        @archive_origins,
+        publication_id
+      ]
     )
   end
 
-  def editorial_categories(language) do
+  def editorial_categories(publication_id, language) do
     DB.all(
-      "SELECT category, count(*)::int AS n FROM stories WHERE origin = ANY($2) AND language = $1 AND category IS NOT NULL GROUP BY category ORDER BY category",
-      [language, @archive_origins]
+      """
+      SELECT category, count(*)::int AS n FROM stories
+      WHERE origin = ANY($2) AND publication_id = $3 AND language = $1 AND category IS NOT NULL
+      GROUP BY category ORDER BY category
+      """,
+      [language, @archive_origins, publication_id]
     )
   end
 
-  def all_editorial(limit \\ 5000) do
+  def all_editorial(publication_id, limit \\ 5000) do
     DB.all(
       """
       SELECT language, slug, category, translation_key, to_char(issue_date, 'YYYY-MM-DD') AS date_slug
-      FROM stories WHERE origin = ANY($2) ORDER BY published_at DESC LIMIT $1
+      FROM stories WHERE origin = ANY($2) AND publication_id = $3 ORDER BY published_at DESC LIMIT $1
       """,
-      [limit, @archive_origins]
+      [limit, @archive_origins, publication_id]
     )
   end
 
@@ -203,9 +223,9 @@ defmodule Rnews1.Stories do
       """
       INSERT INTO stories(language, slug, translation_key, category, tags,
         headline, standfirst, body, published_at, issue_date,
-        fingerprint, source_url, source_name, verbatim_run, origin)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$14::date,$10,$11,$12,$13,'editorial')
-      ON CONFLICT (language, slug) WHERE slug IS NOT NULL DO NOTHING
+        fingerprint, source_url, source_name, verbatim_run, publication_id, origin)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$14::date,$10,$11,$12,$13,$15,'editorial')
+      ON CONFLICT (publication_id, language, slug) WHERE slug IS NOT NULL DO NOTHING
       RETURNING *
       """,
       [
@@ -222,12 +242,15 @@ defmodule Rnews1.Stories do
         Map.get(attrs, :source_url),
         Map.get(attrs, :source_name),
         Map.get(attrs, :verbatim_run, 0),
-        DB.date(attrs.issue_date)
+        DB.date(attrs.issue_date),
+        attrs.publication_id
       ]
     )
   end
 
-  def slug_taken?(slug), do: DB.one("SELECT 1 AS x FROM stories WHERE slug = $1 LIMIT 1", [slug]) != nil
+  def slug_taken?(publication_id, slug) do
+    DB.one("SELECT 1 AS x FROM stories WHERE publication_id = $1 AND slug = $2 LIMIT 1", [publication_id, slug]) != nil
+  end
 
   def missing_translations(%{languages: languages} = opts) do
     DB.all(

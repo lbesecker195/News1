@@ -125,6 +125,17 @@ defmodule Rnews1.Util.Hosts do
   def platform_host(subdomain), do: "#{subdomain}.#{Env.sites_domain()}"
 
   @doc """
+  A publication's own origin. Scheme and port follow APP_ORIGIN the same way a
+  tenant's do, so a dev publication on www.localhost keeps the :4000.
+  """
+  def publication_origin(%{hostname: hostname}) do
+    uri = Env.app_uri()
+    port = if uri.port in [nil, 80, 443], do: "", else: ":#{uri.port}"
+
+    "#{uri.scheme}://#{hostname}#{port}"
+  end
+
+  @doc """
   The archive's own label — "www" for www.rnews1.com — when the archive is a
   subdomain of the platform domain, which is the subdomain the house account
   holds.

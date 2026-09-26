@@ -95,4 +95,75 @@ defmodule Rnews1Web.ArchiveTest do
     assert body_of(conn |> www() |> get("/robots.txt")) =~ "Sitemap: https://www.rnews1.test/sitemap.xml"
     refute body_of(conn |> get("/sitemap.xml")) =~ "/usa/#{@slug}/"
   end
+
+  describe "a second publication" do
+    setup do
+      other =
+        Rnews1.Publications.create(%{
+          slug: "fashion",
+          name: "FashionShowOn",
+          hostname: "news.fashionshowon.test",
+          languages: ["en"],
+          sections: [%{name: "Runway", query: "runway shows collections"}]
+        })
+
+      archive_story(%{
+        publication_id: other.id,
+        language: "en",
+        slug: "a-collection-arrived",
+        translation_key: "fashion-1",
+        category: "Runway",
+        headline: "A collection arrived"
+      })
+
+      %{other: other}
+    end
+
+    defp fashion(conn), do: on_host(conn, "news.fashionshowon.test")
+
+    test "serves its own stories on its own host, and neither site can see the other's", %{conn: conn} do
+      mine = conn |> fashion() |> get("/en/runway/a-collection-arrived/#{@date}")
+      assert mine.status == 200 and body_of(mine) =~ "A collection arrived"
+
+      # The archive's story is not reachable on the fashion host, nor the reverse.
+      assert (conn |> fashion() |> get(url("en"))).status == 404
+      assert (conn |> www() |> get("/en/runway/a-collection-arrived/#{@date}")).status == 404
+
+      index = body_of(conn |> fashion() |> get("/en"))
+      assert index =~ "A collection arrived"
+      refute index =~ "Headline in en"
+    end
+
+    test "builds canonical, hreflang and sitemap URLs on its own domain", %{conn: conn} do
+      page = conn |> fashion() |> get("/en/runway/a-collection-arrived/#{@date}")
+      assert body_of(page) =~ ~s(rel="canonical" href="https://news.fashionshowon.test/en/runway/a-collection-arrived/#{@date}")
+      refute body_of(page) =~ "www.rnews1.test"
+
+      map = body_of(conn |> fashion() |> get("/sitemap.xml"))
+      assert map =~ "<loc>https://news.fashionshowon.test/sitemap-en.xml</loc>"
+      refute map =~ "rnews1.test"
+
+      assert body_of(conn |> fashion() |> get("/robots.txt")) =~ "Sitemap: https://news.fashionshowon.test/sitemap.xml"
+    end
+
+    test "publishes only the languages it runs", %{conn: conn} do
+      # The archive runs Spanish; this publication does not, so the locale is
+      # not merely empty here — it is not one of its URLs at all.
+      assert (conn |> fashion() |> get("/es")).status == 404
+      assert (conn |> fashion() |> get("/es/runway/a-collection-arrived/#{@date}")).status == 404
+      assert (conn |> www() |> get("/es")).status == 200
+
+      # And an unmatched Accept-Language lands on something real rather than a 404.
+      root = conn |> fashion() |> put_req_header("accept-language", "es,ar;q=0.8") |> get("/")
+      assert root.status == 302 and location(root) == "/en"
+    end
+
+    test "the TLS gate vouches for its hostname, which classify cannot recognise", %{conn: conn} do
+      ok = conn |> get("/.well-known/tls-ask?domain=news.fashionshowon.test")
+      assert ok.status == 200
+
+      nope = conn |> get("/.well-known/tls-ask?domain=not-ours.test")
+      assert nope.status == 404
+    end
+  end
 end

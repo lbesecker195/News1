@@ -10,6 +10,12 @@ defmodule Mix.Tasks.Rnews1.Login do
   def run(args), do: (Mix.Task.run("app.start", ["--no-start"]); {:ok, _} = Application.ensure_all_started(:rnews1); Rnews1.CLI.login(args))
 end
 
+defmodule Mix.Tasks.Rnews1.Publication do
+  @shortdoc "List or add a news site: mix rnews1.publication [add <slug> <hostname> ...]"
+  use Mix.Task
+  def run(args), do: (Mix.Task.run("app.start", ["--no-start"]); {:ok, _} = Application.ensure_all_started(:rnews1); Rnews1.CLI.publication(args))
+end
+
 defmodule Mix.Tasks.Rnews1.Content do
   @shortdoc "Write the journal: mix rnews1.content [--dry-run] [--category X] [--languages a,b]"
   use Mix.Task
