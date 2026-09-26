@@ -158,6 +158,34 @@ defmodule Rnews1Web.ArchiveTest do
       assert root.status == 302 and location(root) == "/en"
     end
 
+    test "carries its own masthead, with Rnews1 named only in the footer credit", %{conn: conn} do
+      for path <- ["/en", "/en/runway", "/en/runway/a-collection-arrived/#{@date}"] do
+        body = body_of(conn |> fashion() |> get(path))
+
+        assert body =~ "FashionShowOn", path
+        assert body =~ "Powered by Rnews1", path
+
+        # Every other mention of the brand, its tagline and its product copy is
+        # gone: the masthead, the title, the description, and the sign-in links
+        # that belong to the briefing product rather than to a news site.
+        refute body =~ "Real News, made for One", path
+        refute body =~ "written for one reader at a time", path
+        refute body =~ "Sign in", path
+        refute body =~ "— rnews1</title>", path
+
+        # One mention, and it is the footer credit.
+        assert length(String.split(body, "Rnews1")) - 1 == 1, path
+      end
+    end
+
+    test "the archive itself keeps every word of its own branding", %{conn: conn} do
+      body = body_of(conn |> www() |> get("/en"))
+
+      assert body =~ "Real News, made for One"
+      assert body =~ "written for one reader at a time"
+      assert body =~ "Sign in"
+    end
+
     test "the TLS gate vouches for its hostname, which classify cannot recognise", %{conn: conn} do
       ok = conn |> get("/.well-known/tls-ask?domain=news.fashionshowon.test")
       assert ok.status == 200

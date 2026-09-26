@@ -1,14 +1,25 @@
+<%
+  # One of our own news sites that is not the archive carries its own name and
+  # nothing of Rnews1's, apart from the credit in the footer: its readers came
+  # for that title, not for the briefing product. The archive itself, and every
+  # app and tenant page, keep reading content.json exactly as before.
+  publication = assigns[:publication]
+  own_masthead = publication != nil and publication.slug != Rnews1.Publications.default_slug()
+  masthead_name = if own_masthead, do: publication.name, else: @brand.name
+  masthead_line = if own_masthead, do: publication.tagline, else: @brand.tagline
+  meta_description = if own_masthead, do: publication.tagline || publication.name, else: @brand.description
+%>
 <!doctype html>
 <html lang={assigns[:html_lang] || "en"} dir={assigns[:dir] || "ltr"}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <%= if assigns[:indexable] do %>
-    <meta name="description" content={@brand.description} />
+    <meta name="description" content={meta_description} />
   <% else %>
     <meta name="robots" content="noindex" />
   <% end %>
-  <title><%= assigns[:page_title] || "Rnews1" %> — <%= @brand.name %></title>
+  <title><%= if own_masthead do %><%= assigns[:page_title] || masthead_name %><%= if assigns[:page_title] && assigns[:page_title] != masthead_name do %> — <%= masthead_name %><% end %><% else %><%= assigns[:page_title] || "Rnews1" %> — <%= @brand.name %><% end %></title>
   <%= if assigns[:canonical_url] do %>
     <link rel="canonical" href={@canonical_url} />
   <% end %>
@@ -48,8 +59,10 @@
         <span class="nav-links"><a href={site.origin <> "/feed.xml"}>RSS</a></span>
       <% end %>
     <% else %>
-      <a class="brand" href={home}><%= @brand.name %><span> / <%= @brand.tagline %></span></a>
-      <%= if chrome do %>
+      <a class="brand" href={home}>
+        <%= masthead_name %><%= if masthead_line do %><span> / <%= masthead_line %></span><% end %>
+      </a>
+      <%= if chrome and not own_masthead do %>
         <span class="nav-links">
           <%= if assigns[:signed_in] do %>
             <a href={root <> "/app"}>Dashboard</a>
@@ -70,7 +83,7 @@
     <%= if assigns[:branding] != false do %>
       <a href={root <> "/"}>Powered by Rnews1</a> ·
     <% end %>
-    <%= if chrome && !tenant do %>
+    <%= if chrome && !tenant && !own_masthead do %>
       <%= if assigns[:signed_in] do %>
         <a href={root <> "/app"}>Dashboard</a> ·
       <% else %>

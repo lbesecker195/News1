@@ -87,11 +87,12 @@ defmodule Rnews1.Publications do
       publication =
         DB.one(
           """
-          INSERT INTO publications(slug, name, hostname, languages, active)
-          VALUES($1, $2, $3, $4, $5)
+          INSERT INTO publications(slug, name, hostname, languages, active, tagline)
+          VALUES($1, $2, $3, $4, $5, $6)
           ON CONFLICT (slug) DO UPDATE
             SET name = EXCLUDED.name, hostname = EXCLUDED.hostname,
-                languages = EXCLUDED.languages, active = EXCLUDED.active
+                languages = EXCLUDED.languages, active = EXCLUDED.active,
+                tagline = EXCLUDED.tagline
           RETURNING *
           """,
           [
@@ -99,7 +100,8 @@ defmodule Rnews1.Publications do
             attrs.name,
             String.downcase(attrs.hostname),
             Map.get(attrs, :languages, ["en"]),
-            Map.get(attrs, :active, true)
+            Map.get(attrs, :active, true),
+            Map.get(attrs, :tagline)
           ]
         )
 
