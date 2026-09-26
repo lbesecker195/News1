@@ -4,7 +4,7 @@ defmodule Rnews1.CLI do
   in development and from `bin/rnews1 eval 'Rnews1.CLI.login(["me@x"])'` in a
   release.
   """
-  alias Rnews1.{Accounts, Admins, Clicks, Editorial, Env, Reports, Sites, Subscribers, Worker}
+  alias Rnews1.{Accounts, Admins, Clicks, Editorial, Env, Publications, Reports, Sites, Subscribers, Worker}
   alias Rnews1.Util.{Ids, Languages}
 
   def create_admin([email, password | rest]) do
@@ -43,23 +43,121 @@ defmodule Rnews1.CLI do
     end
   end
 
+  @doc """
+  The news sites we run. With no arguments it lists them; `add` creates one.
+
+      mix rnews1.publication
+      mix rnews1.publication add fashion news.fashionshowon.com \\
+        --name FashionShowOn --languages en \\
+        --sections "Runway:runway shows collections designers,Beauty:beauty cosmetics skincare"
+
+  A section is `Name:search terms`. The name becomes the {topic} segment of
+  every URL that section publishes, so it is a decision to make once.
+  """
+  def publication(["add", slug, hostname | rest]) do
+    sections =
+      (flag(rest, "--sections") || "")
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.map(fn pair ->
+        case String.split(pair, ":", parts: 2) do
+          [name, query] -> %{name: String.trim(name), query: String.trim(query)}
+          [name] -> %{name: String.trim(name), query: String.trim(name)}
+        end
+      end)
+
+    languages =
+      case flag(rest, "--languages") do
+        nil -> ["en"]
+        v -> v |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+      end
+
+    unknown = Enum.reject(languages, &Languages.language?/1)
+    if unknown != [], do: raise("Unknown language(s): #{Enum.join(unknown, ", ")}. One of: #{Enum.join(Languages.codes(), ", ")}")
+
+    created =
+      Publications.create(%{
+        slug: slug,
+        name: flag(rest, "--name") || slug,
+        hostname: hostname,
+        languages: languages,
+        sections: sections
+      })
+
+    IO.puts("\n#{created.name} — #{created.hostname}")
+    IO.puts("  languages: #{Enum.join(created.languages, ", ")}")
+    IO.puts("  sections:  #{Enum.map_join(Publications.sections(created.id), ", ", & &1.name)}")
+
+    IO.puts("""
+
+    Next, outside the application:
+      1. Point #{hostname} at this server in DNS.
+      2. Give it a certificate. Until the edge does it on demand:
+         certbot certonly --nginx --cert-name #{hostname} -d #{hostname}
+      3. Add an nginx server block for #{hostname} proxying to the app.
+      4. Write its first articles: mix rnews1.content --publication #{slug}
+    """)
+  end
+
+  def publication(["add" | _]), do: IO.puts("Usage: mix rnews1.publication add <slug> <hostname> [--name N] [--languages a,b] [--sections \"Name:terms,...\"]")
+
+  def publication(_) do
+    case Publications.list() do
+      [] ->
+        IO.puts("No publications yet.")
+
+      rows ->
+        IO.puts("")
+
+        for p <- rows do
+          sections = Publications.sections(p.id)
+          IO.puts("#{String.pad_trailing(p.slug, 12)} #{String.pad_trailing(p.hostname, 34)} #{if p.active, do: "active", else: "inactive"}")
+          IO.puts("  #{length(sections)} section(s): #{Enum.map_join(sections, ", ", & &1.name)}")
+          IO.puts("  languages: #{Enum.join(p.languages, ", ")}\n")
+        end
+    end
+  end
+
   def content(args) do
     Env.require!([:openai_api_key, :treg_token])
     dry_run = "--dry-run" in args
     only = flag(args, "--category")
-    categories = if only, do: [Editorial.match_category(only)] |> Enum.reject(&is_nil/1), else: Editorial.categories()
-    if only && categories == [], do: raise("Unknown section \"#{only}\". One of: #{Enum.join(Editorial.categories(), ", ")}")
-    concurrency = (flag(args, "--concurrency") || to_string(Editorial.translation_concurrency())) |> String.to_integer()
-    languages = case flag(args, "--languages"), do: (nil -> Editorial.translation_languages(); v -> v |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == "")))
+    wanted = flag(args, "--publication")
 
-    IO.puts("#{if dry_run, do: "Dry run: ", else: ""}#{length(categories)} section(s), #{length(languages) + 1} language(s) each, #{concurrency} translation(s) at a time\n")
+    publications =
+      case wanted do
+        nil -> Publications.list_active()
+        slug -> [Publications.find_by_slug(slug)] |> Enum.reject(&is_nil/1)
+      end
+
+    if wanted && publications == [],
+      do: raise("Unknown publication \"#{wanted}\". One of: #{Enum.map_join(Publications.list(), ", ", & &1.slug)}")
+
+    concurrency = (flag(args, "--concurrency") || to_string(Editorial.translation_concurrency())) |> String.to_integer()
+    override = case flag(args, "--languages"), do: (nil -> nil; v -> v |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == "")))
+
+    # Each publication runs its own sections in its own languages, so the work
+    # is a list of {publication, section} pairs rather than a list of sections.
+    work =
+      Enum.flat_map(publications, fn publication ->
+        sections = Publications.sections(publication.id)
+        sections = if only, do: Enum.filter(sections, &(String.downcase(&1.name) == String.downcase(only))), else: sections
+        Enum.map(sections, &{publication, &1})
+      end)
+
+    if only && work == [], do: raise("No publication has a section named \"#{only}\".")
+
+    IO.puts("#{if dry_run, do: "Dry run: ", else: ""}#{length(work)} section(s) across #{length(publications)} publication(s), #{concurrency} translation(s) at a time\n")
 
     results =
-      Enum.map(categories, fn category ->
+      Enum.map(work, fn {publication, section} ->
         started = System.monotonic_time(:second)
-        result = Editorial.write_for_category(category, languages: languages, concurrency: concurrency, dry_run: dry_run)
-        result = Map.put(result, :seconds, System.monotonic_time(:second) - started)
-        IO.puts("  " <> line(result))
+        opts = [concurrency: concurrency, dry_run: dry_run]
+        opts = if override, do: Keyword.put(opts, :languages, override), else: opts
+        result = Editorial.write_for_section(publication, section, opts)
+        result = result |> Map.put(:seconds, System.monotonic_time(:second) - started) |> Map.put(:publication, publication.slug)
+        IO.puts("  #{publication.slug} · " <> line(result))
         result
       end)
 

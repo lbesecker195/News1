@@ -55,21 +55,29 @@ defmodule Rnews1.Fixtures do
     secret
   end
 
+  @doc """
+  The archive as a publication row, reconciled to the test environment's host.
+  The migration seeds it with an unresolvable hostname on purpose, so a test
+  that serves the archive has to ask for it by name like the application does.
+  """
+  def publication, do: Rnews1.Publications.ensure_default()
+
   def archive_story(attrs \\ %{}) do
     attrs =
       Map.merge(
         %{language: "en", slug: "a-thing-that-happened", translation_key: "group-1", category: "USA", tags: ["immigration"],
           headline: "Headline in en", standfirst: "A standfirst.", body: "## A heading\n\nA **bold** paragraph with [a link](https://example.com/x).",
-          published_at: ~U[2026-08-30 01:11:00Z], issue_date: "2026-08-29", origin: "import"},
+          published_at: ~U[2026-08-30 01:11:00Z], issue_date: "2026-08-29", origin: "import",
+          publication_id: publication().id},
         attrs
       )
 
     DB.one(
       """
-      INSERT INTO stories(language, slug, translation_key, category, tags, headline, standfirst, body, published_at, issue_date, origin)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11) RETURNING *, to_char(issue_date,'YYYY-MM-DD') AS date_slug
+      INSERT INTO stories(language, slug, translation_key, category, tags, headline, standfirst, body, published_at, issue_date, origin, publication_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::date,$11,$12) RETURNING *, to_char(issue_date,'YYYY-MM-DD') AS date_slug
       """,
-      [attrs.language, attrs.slug, attrs.translation_key, attrs.category, attrs.tags, attrs.headline, attrs.standfirst, attrs.body, attrs.published_at, Date.from_iso8601!(attrs.issue_date), attrs.origin]
+      [attrs.language, attrs.slug, attrs.translation_key, attrs.category, attrs.tags, attrs.headline, attrs.standfirst, attrs.body, attrs.published_at, Date.from_iso8601!(attrs.issue_date), attrs.origin, attrs.publication_id]
     )
   end
 end
