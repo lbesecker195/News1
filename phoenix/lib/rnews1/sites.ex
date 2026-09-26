@@ -55,7 +55,7 @@ defmodule Rnews1.Sites do
     Enum.reduce_while(1..25, nil, fn attempt, _ ->
       label = if attempt == 1, do: base, else: "#{base}-#{attempt}"
 
-      if DB.one("SELECT 1 AS x FROM tenants WHERE subdomain = $1", [label]) do
+      if DB.one("SELECT 1 AS x FROM tenants WHERE subdomain = $1", [label]) != nil or publication_label?(label) do
         {:cont, nil}
       else
         DB.execute("SAVEPOINT tenant_insert")
@@ -176,16 +176,49 @@ defmodule Rnews1.Sites do
       if e.postgres[:code] == :unique_violation, do: {:error, :taken}, else: reraise(e, __STACKTRACE__)
   end
 
-  # Free means: no tenant has it now, and nobody else released it recently.
+  # Free means: no tenant has it now, nobody else released it recently, and no
+  # publication of ours is served on it.
   defp label_free?(label, tenant_id) do
+    not publication_label?(label) and
+      DB.one(
+        """
+        SELECT 1 AS x FROM tenants WHERE subdomain = $1
+        UNION ALL SELECT 1 FROM subdomain_history WHERE subdomain = $1 AND tenant_id <> $2 AND released_at > now() - ($3 || ' days')::interval
+        LIMIT 1
+        """,
+        [label, tenant_id, to_string(@history_days)]
+      ) == nil
+  end
+
+  @doc """
+  Whether one of our own news sites is served on this platform label.
+
+  The host plug resolves publications before tenants, so a tenant allowed to
+  take a label a publication already holds would be shadowed by a site it does
+  not own — its readers would silently get the publication instead. Both the
+  rename path and the first label a new tenant is given have to refuse it.
+  """
+  def publication_label?(label) do
+    DB.one("SELECT 1 AS x FROM publications WHERE hostname = $1", [Hosts.platform_host(label)]) != nil
+  end
+
+  @doc """
+  Whether a tenant answers on this platform label, now or still by redirect.
+
+  The mirror of publication_label?/1, for the other direction: a publication
+  must not be created on a label a customer holds, nor on one released inside
+  the redirect window, because the host plug would resolve the publication
+  first and their site would stop existing.
+  """
+  def label_held?(label) do
     DB.one(
       """
       SELECT 1 AS x FROM tenants WHERE subdomain = $1
-      UNION ALL SELECT 1 FROM subdomain_history WHERE subdomain = $1 AND tenant_id <> $2 AND released_at > now() - ($3 || ' days')::interval
+      UNION ALL SELECT 1 FROM subdomain_history WHERE subdomain = $1 AND released_at > now() - ($2 || ' days')::interval
       LIMIT 1
       """,
-      [label, tenant_id, to_string(@history_days)]
-    ) == nil
+      [label, to_string(@history_days)]
+    ) != nil
   end
 
   @doc "Swaps a placeholder for a label made from the company name. Not a rename in the owner's budget."

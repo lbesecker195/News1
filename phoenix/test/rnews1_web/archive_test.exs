@@ -186,6 +186,77 @@ defmodule Rnews1Web.ArchiveTest do
       assert body =~ "Sign in"
     end
 
+    test "on the platform domain it holds its label against tenants", %{conn: conn} do
+      Rnews1.Publications.create(%{
+        slug: "onplatform",
+        name: "OnPlatform",
+        hostname: "fashionshowon.rnews1.test",
+        languages: ["en"],
+        sections: [%{name: "Runway", query: "runway"}]
+      })
+
+      %{tenant_id: tenant_id} = paid_tenant(stakeholders: 1)
+
+      # The host plug resolves publications first, so a tenant allowed to take
+      # this label would be shadowed by a site it does not own.
+      assert Rnews1.Sites.publication_label?("fashionshowon")
+      assert Rnews1.Sites.rename(tenant_id, "fashionshowon") == {:error, :taken}
+
+      # And a label no publication holds is still free.
+      assert Rnews1.Sites.rename(tenant_id, "some-other-label") == {:ok, "some-other-label"}
+
+      # The publication itself still serves on it.
+      assert (conn |> on_host("fashionshowon.rnews1.test") |> get("/en")).status in [200, 404]
+      refute (conn |> on_host("fashionshowon.rnews1.test") |> get("/en")).status == 301
+    end
+
+    test "continue-reading never offers another site's stories", %{conn: conn} do
+      # Same language and same section name on both sites: the only thing that
+      # may keep them apart is the publication.
+      archive_story(%{language: "en", slug: "archive-runway-piece", translation_key: "arch-runway", category: "Runway", headline: "Archive runway piece"})
+
+      body = body_of(conn |> fashion() |> get("/en/runway/a-collection-arrived/#{@date}"))
+      assert body =~ "A collection arrived"
+      refute body =~ "Archive runway piece"
+    end
+
+    test "two publications can each run the same slug", %{conn: conn, other: other} do
+      # 013 made slugs per-publication; the translation index had to follow, or
+      # the second site's article raises instead of publishing.
+      assert archive_story(%{language: "en", slug: "shared-slug", translation_key: "shared-slug", category: "USA", headline: "Archive version"})
+
+      assert archive_story(%{
+               publication_id: other.id,
+               language: "en",
+               slug: "shared-slug",
+               translation_key: "shared-slug",
+               category: "Runway",
+               headline: "Fashion version"
+             })
+
+      assert body_of(conn |> www() |> get("/en/usa/shared-slug/#{@date}")) =~ "Archive version"
+      assert body_of(conn |> fashion() |> get("/en/runway/shared-slug/#{@date}")) =~ "Fashion version"
+    end
+
+    test "a publication cannot be created on a label a customer holds" do
+      %{tenant_id: tenant_id} = paid_tenant(stakeholders: 1)
+      taken = Rnews1.DB.one("SELECT subdomain FROM tenants WHERE id = $1", [tenant_id]).subdomain
+
+      assert Rnews1.Publications.hostname_conflict("#{taken}.rnews1.test") == :label_taken
+
+      assert Rnews1.Publications.create(%{slug: "thief", name: "Thief", hostname: "#{taken}.rnews1.test"}) ==
+               {:error, :label_taken}
+
+      # The customer's site still answers on it.
+      assert (build_conn() |> on_host("#{taken}.rnews1.test") |> get("/")).status != 404
+    end
+
+    test "reports into its own analytics project, leaving the archive's alone" do
+      assert Rnews1Web.Analytics.project(%{archive: true, publication: %{slug: "fashion"}}) == "fashion"
+      assert Rnews1Web.Analytics.project(%{archive: true, publication: %{slug: "archive"}}) == "www"
+      assert Rnews1Web.Analytics.project(%{archive: true}) == "www"
+    end
+
     test "the TLS gate vouches for its hostname, which classify cannot recognise", %{conn: conn} do
       ok = conn |> get("/.well-known/tls-ask?domain=news.fashionshowon.test")
       assert ok.status == 200

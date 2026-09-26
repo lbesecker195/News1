@@ -37,10 +37,25 @@ defmodule Rnews1Web.Analytics do
     site = assigns[:site]
 
     cond do
+      # Each news site reports into its own project. Before publications the
+      # :archive assign meant one host, so the label was always the archive's;
+      # it now covers every publication, and without the slug one site's
+      # traffic would be counted as the archive's. The archive itself keeps
+      # reporting into the label it always has, so its history stays continuous.
+      publication = other_publication(assigns) -> publication.slug
       assigns[:archive] -> Hosts.archive_label() || "www"
       match?(%{tenant: %{}}, site) -> label(site.tenant)
       match?(%{host: host} when is_binary(host), site) -> host_label(site.host)
       true -> "app"
+    end
+  end
+
+  # The publication serving this request, unless it is the archive — which
+  # reports under its own long-standing label rather than its slug.
+  defp other_publication(assigns) do
+    case assigns[:publication] do
+      %{slug: slug} = publication when slug != "archive" -> publication
+      _ -> nil
     end
   end
 

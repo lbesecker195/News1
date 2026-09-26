@@ -7,8 +7,8 @@ defmodule Rnews1.Publications do
   served on, the sections it runs, and the languages it publishes in. Nothing
   else about an editorial site varies, so nothing else lives here.
   """
-  alias Rnews1.{DB, Env}
-  alias Rnews1.Util.Languages
+  alias Rnews1.{DB, Env, Sites}
+  alias Rnews1.Util.{Hosts, Languages}
 
   @default_slug "archive"
 
@@ -83,6 +83,44 @@ defmodule Rnews1.Publications do
   every article, and that is a decision to make deliberately per site.
   """
   def create(attrs) do
+    hostname = String.downcase(attrs.hostname)
+
+    case hostname_conflict(hostname) do
+      nil -> do_create(attrs, hostname)
+      reason -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Why this hostname cannot become a publication, or nil.
+
+  The host plug resolves publications before tenants, so creating one on a
+  hostname a customer already answers on would hand their readers our site
+  instead: their home page would render the wrong masthead and their feed,
+  embed and article URLs would 404, because those routes live only in the site
+  router. The released-label window counts too — a 301 that stops resolving is
+  the same breakage one redirect later.
+  """
+  def hostname_conflict(hostname) do
+    hostname = String.downcase(to_string(hostname))
+    where = Hosts.classify(hostname)
+
+    cond do
+      where.kind == :app ->
+        :app_host
+
+      where.kind == :subdomain and Sites.label_held?(where.label) ->
+        :label_taken
+
+      where.kind == :custom and Sites.find_by_custom_hostname(hostname) != nil ->
+        :custom_domain_taken
+
+      true ->
+        nil
+    end
+  end
+
+  defp do_create(attrs, hostname) do
     DB.transaction(fn ->
       publication =
         DB.one(
@@ -98,7 +136,7 @@ defmodule Rnews1.Publications do
           [
             attrs.slug,
             attrs.name,
-            String.downcase(attrs.hostname),
+            hostname,
             Map.get(attrs, :languages, ["en"]),
             Map.get(attrs, :active, true),
             Map.get(attrs, :tagline)

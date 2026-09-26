@@ -181,29 +181,34 @@ defmodule Rnews1.Stories do
     )
   end
 
-  def related_to(%{language: language, category: category, exclude_id: exclude_id} = opts) do
+  # These two feed the "continue reading" block under an article. They are
+  # scoped like every other archive read: an article on one site must never
+  # offer, or link to, a story belonging to another.
+
+  def related_to(%{publication_id: publication_id, language: language, category: category, exclude_id: exclude_id} = opts) do
     DB.all(
       """
       SELECT id, language, slug, category, headline, standfirst,
              to_char(issue_date, 'YYYY-MM-DD') AS date_slug, length(body) AS body_length
       FROM stories
-      WHERE origin = ANY($5) AND language = $1 AND lower(category) = lower($2) AND id <> $3
+      WHERE origin = ANY($5) AND publication_id = $6 AND language = $1
+        AND lower(category) = lower($2) AND id <> $3
       ORDER BY issue_date DESC, created_at DESC LIMIT $4
       """,
-      [language, category || "", exclude_id, Map.get(opts, :limit, 3), @archive_origins]
+      [language, category || "", exclude_id, Map.get(opts, :limit, 3), @archive_origins, publication_id]
     )
   end
 
-  def also_in_language(%{language: language, exclude_ids: exclude_ids} = opts) do
+  def also_in_language(%{publication_id: publication_id, language: language, exclude_ids: exclude_ids} = opts) do
     DB.all(
       """
       SELECT id, language, slug, category, headline, standfirst,
              to_char(issue_date, 'YYYY-MM-DD') AS date_slug, length(body) AS body_length
       FROM stories
-      WHERE origin = ANY($4) AND language = $1 AND NOT (id = ANY($2::uuid[]))
+      WHERE origin = ANY($4) AND publication_id = $5 AND language = $1 AND NOT (id = ANY($2::uuid[]))
       ORDER BY issue_date DESC, created_at DESC LIMIT $3
       """,
-      [language, exclude_ids, Map.get(opts, :limit, 3), @archive_origins]
+      [language, exclude_ids, Map.get(opts, :limit, 3), @archive_origins, publication_id]
     )
   end
 
@@ -299,13 +304,17 @@ defmodule Rnews1.Stories do
 
   def recent_by_section(_), do: []
 
-  @doc "Upsert for the Hugo import: re-running updates in place."
+  @doc """
+  Upsert for the Hugo import: re-running updates in place. The conflict target
+  names the publication because that is the unique index there is — the global
+  one on (language, slug) went when a slug became unique per publication.
+  """
   def upsert_import(article) do
     DB.execute(
       """
-      INSERT INTO stories(language, slug, translation_key, category, tags, headline, standfirst, body, published_at, issue_date, origin)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$9::timestamptz::date,'import')
-      ON CONFLICT (language, slug) WHERE slug IS NOT NULL
+      INSERT INTO stories(publication_id, language, slug, translation_key, category, tags, headline, standfirst, body, published_at, issue_date, origin)
+      VALUES($10,$1,$2,$3,$4,$5,$6,$7,$8,$9::timestamptz,$9::timestamptz::date,'import')
+      ON CONFLICT (publication_id, language, slug) WHERE slug IS NOT NULL
       DO UPDATE SET translation_key = EXCLUDED.translation_key, category = EXCLUDED.category, tags = EXCLUDED.tags,
         headline = EXCLUDED.headline, standfirst = EXCLUDED.standfirst, body = EXCLUDED.body,
         published_at = EXCLUDED.published_at, issue_date = EXCLUDED.issue_date
@@ -319,7 +328,8 @@ defmodule Rnews1.Stories do
         article.title,
         article.description,
         article.body,
-        article.published_at
+        article.published_at,
+        Map.get_lazy(article, :publication_id, fn -> Rnews1.Publications.ensure_default().id end)
       ]
     )
   end

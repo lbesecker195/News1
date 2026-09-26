@@ -76,12 +76,26 @@ defmodule Rnews1Web.ArchiveController do
       conn |> put_resp_header("location", canonical) |> send_resp(301, "")
     else
       translations = Stories.translations_of(publication.id, story.translation_key)
-      related = Stories.related_to(%{language: language, category: story.category, exclude_id: story.id, limit: 3})
+      related =
+        Stories.related_to(%{
+          publication_id: publication.id,
+          language: language,
+          category: story.category,
+          exclude_id: story.id,
+          limit: 3
+        })
 
       more =
         if length(related) >= 3,
           do: related,
-          else: related ++ Stories.also_in_language(%{language: language, exclude_ids: [story.id | Enum.map(related, & &1.id)], limit: 3 - length(related)})
+          else:
+            related ++
+              Stories.also_in_language(%{
+                publication_id: publication.id,
+                language: language,
+                exclude_ids: [story.id | Enum.map(related, & &1.id)],
+                limit: 3 - length(related)
+              })
 
       conn
       |> public_cache(600)
