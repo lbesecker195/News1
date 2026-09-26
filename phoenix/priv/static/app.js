@@ -134,8 +134,6 @@
   const cancelButton = $("#cancel");
   const feedLinks = $("#feed-links");
   const embedCode = $("#embed-code");
-  const embedFrame = $("#site-embed");
-  const embedNote = $("#site-embed-note");
   const publishState = $("#publish-state");
   const stakeholderState = $("#stakeholder-state");
 
@@ -271,34 +269,6 @@
         'style="border:0" title="Company news"></iframe>';
     }
 
-    /*
-     * The same embed the customer would paste elsewhere, framed here from the
-     * first visit. Before the publishing gate opens it renders the 409 the
-     * embed serves to everybody, so the caption says which of the two reasons
-     * it is rather than leaving an unexplained error in the page.
-     */
-    const framed = state.site?.platformOrigin && `${state.site.platformOrigin}/embed`;
-
-    if (embedFrame && framed) {
-      /*
-       * Framed from the platform origin even for a custom-domain tenant: the
-       * two serve the same site, and the app's CSP can name every platform
-       * host with one wildcard where it could never name every custom domain.
-       */
-      if (embedFrame.getAttribute("src") !== framed) embedFrame.src = framed;
-
-      if (embedNote) {
-        const { published, remaining } = state.stakeholders || {};
-
-        embedNote.textContent = published
-          ? `Live at ${state.embed}`
-          : remaining
-            ? `Private until ${remaining} more stakeholder${remaining === 1 ? "" : "s"} ` +
-              "are added — until then this frame shows the refusal readers would get."
-            : "Private until your subscription is active — until then this frame " +
-              "shows the refusal readers would get.";
-      }
-    }
   }
 
   /*

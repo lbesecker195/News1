@@ -8,7 +8,6 @@ defmodule Rnews1Web.Plugs.SecureHeaders do
   """
   @behaviour Plug
   import Plug.Conn
-  alias Rnews1.Env
   alias Rnews1Web.Analytics
 
   @directives [
@@ -18,42 +17,25 @@ defmodule Rnews1Web.Plugs.SecureHeaders do
     {"img-src", ["'self'", "data:"]},
     {"font-src", ["'self'"]},
     {"connect-src", ["'self'"]},
-    {"frame-src", ["'self'"]},
     {"frame-ancestors", ["'self'"]},
     {"form-action", ["'self'"]},
     {"base-uri", ["'self'"]},
     {"object-src", ["'none'"]}
   ]
   @tracker_directives ["script-src", "connect-src"]
-  @site_directives ["frame-src"]
 
   def csp do
     extra = if Analytics.enabled?(), do: [Analytics.origin()], else: []
-    sites = [sites_wildcard()]
 
     @directives
     |> Enum.map(fn
       {name, sources} when name in @tracker_directives ->
         Enum.join([name | sources ++ extra], " ")
 
-      {name, sources} when name in @site_directives ->
-        Enum.join([name | sources ++ sites], " ")
-
       {name, sources} ->
         Enum.join([name | sources], " ")
     end)
     |> Enum.join("; ")
-  end
-
-  # The dashboard frames a customer's own site so they can see what readers get.
-  # Every such site is served from the platform domain — a custom domain is only
-  # ever an alias onto one — so the frame is pointed at the platform origin and
-  # one wildcard covers every tenant, rather than opening framing to the web.
-  defp sites_wildcard do
-    uri = Env.app_uri()
-    port = if uri.port in [nil, 80, 443], do: "", else: ":#{uri.port}"
-
-    "#{uri.scheme}://*.#{Env.sites_domain()}#{port}"
   end
 
   def init(opts), do: opts
