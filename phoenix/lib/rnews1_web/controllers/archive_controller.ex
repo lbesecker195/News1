@@ -114,10 +114,20 @@ defmodule Rnews1Web.ArchiveController do
 
     if items == [] and page_no > 1, do: fail!(404, "Page not found.")
     archive = Content.archive()
-    title = conn.assigns.publication.name || archive.title
+    publication = conn.assigns.publication
 
-    listing(conn, language, %{heading: title, intro: archive.intro, title: title, category: nil, items: items, page: page_no})
+    # content.json's copy is about the briefing product — "written for one
+    # reader at a time". True of the archive, and nothing to do with a fashion
+    # title, so another publication speaks for itself or says nothing.
+    {title, intro} =
+      if own_masthead?(conn),
+        do: {publication.name, publication.tagline},
+        else: {archive.title, archive.intro}
+
+    listing(conn, language, %{heading: title, intro: intro, title: title, category: nil, items: items, page: page_no})
   end
+
+  defp own_masthead?(conn), do: conn.assigns.publication.slug != Publications.default_slug()
 
   def topic(conn, %{"language" => language, "topic" => name} = params) do
     if not publishes?(conn, language), do: fail!(404, "Page not found.")
@@ -134,8 +144,9 @@ defmodule Rnews1Web.ArchiveController do
 
     if items == [], do: fail!(404, "Nothing published in this section.")
     section = hd(items).category || name
+    intro = if own_masthead?(conn), do: nil, else: Content.fill(Content.archive().sectionIntro, %{section: section})
 
-    listing(conn, language, %{heading: section, intro: Content.fill(Content.archive().sectionIntro, %{section: section}), title: section, category: section, items: items, page: page_no})
+    listing(conn, language, %{heading: section, intro: intro, title: section, category: section, items: items, page: page_no})
   end
 
   defp listing(conn, language, opts) do

@@ -82,6 +82,7 @@ defmodule Rnews1.CLI do
         name: flag(rest, "--name") || slug,
         hostname: hostname,
         languages: languages,
+        tagline: flag(rest, "--tagline"),
         sections: sections
       })
 
@@ -100,7 +101,7 @@ defmodule Rnews1.CLI do
     """)
   end
 
-  def publication(["add" | _]), do: IO.puts("Usage: mix rnews1.publication add <slug> <hostname> [--name N] [--languages a,b] [--sections \"Name:terms,...\"]")
+  def publication(["add" | _]), do: IO.puts("Usage: mix rnews1.publication add <slug> <hostname> [--name N] [--tagline T] [--languages a,b] [--sections \"Name:terms,...\"]")
 
   def publication(_) do
     case Publications.list() do
