@@ -13,7 +13,11 @@ defmodule Rnews1Web.SiteController do
 
   def dashboard(conn, params) do
     conn = Rnews1Web.Plugs.Auth.require_auth_page(conn, [])
-    if conn.halted, do: conn, else: conn |> no_store() |> page(title: "Company dashboard") |> render(:dashboard, checkout: params["checkout"])
+    # body_class "app" widens the shell past the 56rem reading measure and turns
+    # on the sidebar grid: this is a console, not an article.
+    if conn.halted,
+      do: conn,
+      else: conn |> no_store() |> page(title: "Dashboard", body_class: "app") |> render(:dashboard, checkout: params["checkout"])
   end
 
   @doc "Sign in and register are the same page because they are the same act."

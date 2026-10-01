@@ -156,7 +156,168 @@
   const domainIntro = $("#domain-intro");
   const compedNote = $("#comped-note");
 
-  let state = { tenant: null, rss: "", embed: "", stakeholders: null, site: null };
+  let state = { tenant: null, rss: "", embed: "", stakeholders: null, site: null, preview: null };
+
+  /* ---- the console shell -------------------------------------------------
+   * One pane at a time, selected by the fragment, so a section is linkable and
+   * the back button steps between them. Falls back to the overview for an
+   * unknown fragment rather than showing nothing.
+   */
+  const panes = Array.from(document.querySelectorAll("[data-pane]"));
+  const paneLinks = Array.from(document.querySelectorAll("[data-pane-link]"));
+
+  function showPane(name) {
+    const wanted = panes.some(p => p.dataset.pane === name) ? name : "overview";
+
+    for (const pane of panes) pane.hidden = pane.dataset.pane !== wanted;
+
+    for (const link of paneLinks) {
+      const current = link.dataset.paneLink === wanted;
+      if (current) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    }
+
+    /*
+     * Moving focus to the pane heading is what makes this usable by keyboard
+     * and screen reader: without it the reading position stays on the link and
+     * the new content is never announced.
+     */
+    const heading = document.querySelector(`[data-pane="${wanted}"] h1`);
+    if (heading && document.activeElement !== document.body) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+  }
+
+  function currentPane() { return (window.location.hash || "#overview").slice(1); }
+
+  window.addEventListener("hashchange", () => showPane(currentPane()));
+
+  if (panes.length) showPane(currentPane());
+
+  /* ---- what is blocking publication --------------------------------------
+   * The old page made a customer infer this by scrolling four screens and
+   * comparing a stakeholder count against a sentence. It is now one list, in
+   * the order the steps actually have to happen, each linking to the pane that
+   * fixes it.
+   */
+  function requirements() {
+    const tenant = state.tenant || {};
+    const holders = state.stakeholders || {};
+    const comped = Boolean(tenant.comped);
+    const items = state.preview?.items?.length ?? 0;
+
+    return [
+      {
+        done: Boolean(tenant.industry),
+        title: "Choose your topics",
+        detail: tenant.industry ? `${tenant.industry} + ${(tenant.keywords || []).join(", ")}` : "One industry and two keywords.",
+        pane: "content"
+      },
+      {
+        done: items > 0,
+        title: "Coverage found",
+        detail: items > 0 ? `${items} ${items === 1 ? "story" : "stories"} ready` : "Written automatically once your topics are saved.",
+        pane: "overview"
+      },
+      {
+        done: holders.remaining === 0,
+        title: "Add 10 stakeholders",
+        detail: holders.remaining ? `${holders.count} of ${holders.required} added` : `All ${holders.required || 10} added`,
+        pane: "audience"
+      },
+      {
+        done: comped || tenant.billing_status === "active",
+        title: "Activate the subscription",
+        detail: comped ? "Not billed on this account" : "$25/month, cancel any time.",
+        pane: "billing"
+      }
+    ];
+  }
+
+  function renderConsole() {
+    const holders = state.stakeholders || {};
+    const reqs = requirements();
+    const blocking = reqs.filter(r => !r.done);
+    const live = Boolean(holders.published);
+
+    const card = $("#status-card");
+    const dot = $("#status-dot");
+    const headline = $("#status-headline");
+    const detail = $("#status-detail");
+
+    if (card && dot && headline && detail) {
+      card.className = `status-card ${live ? "live" : blocking.length ? "blocked" : ""}`.trim();
+      dot.className = `dot ${live ? "live" : blocking.length ? "blocked" : ""}`.trim();
+      headline.textContent = live ? "Your briefing is live." : "Not published yet.";
+      detail.textContent = live
+        ? "Readers, the RSS feed and the embed are all serving."
+        : blocking.length === 1
+          ? `One thing left: ${blocking[0].title.toLowerCase()}.`
+          : `${blocking.length} things left before it publishes.`;
+    }
+
+    const list = $("#checklist");
+
+    if (list) {
+      list.replaceChildren();
+
+      for (const r of reqs) {
+        const li = document.createElement("li");
+        li.className = r.done ? "done" : "todo";
+
+        const mark = document.createElement("span");
+        mark.className = "mark";
+        mark.textContent = r.done ? "✓" : "•";
+        /* The tick is decorative; the state is in the text for a screen reader. */
+        mark.setAttribute("aria-hidden", "true");
+
+        const what = document.createElement("span");
+        what.className = "what";
+        const title = document.createElement("b");
+        title.textContent = `${r.title}${r.done ? " — done" : ""}`;
+        const sub = document.createElement("span");
+        sub.textContent = r.detail;
+        what.append(title, sub);
+
+        li.append(mark, what);
+
+        if (!r.done) {
+          const go = document.createElement("a");
+          go.href = `#${r.pane}`;
+          go.textContent = "Fix this";
+          li.append(go);
+        }
+
+        list.append(li);
+      }
+    }
+
+    const badge = $("#nav-blockers");
+
+    if (badge) {
+      badge.textContent = blocking.length ? String(blocking.length) : "";
+      badge.hidden = blocking.length === 0;
+    }
+
+    const switcher = $("#site-switcher");
+
+    if (switcher && state.site) {
+      /* One site today. The control exists now so that the day an account owns
+       * several, nothing about this page has to move. */
+      const sites = state.sites?.length ? state.sites : [{ id: "current", label: state.tenant?.name || state.site.subdomain, origin: state.site.origin }];
+      switcher.replaceChildren();
+
+      for (const s of sites) {
+        const option = document.createElement("option");
+        option.value = s.id;
+        option.textContent = s.label;
+        switcher.append(option);
+      }
+
+      switcher.disabled = sites.length < 2;
+    }
+  }
 
   function fillCompanyForm(tenant) {
     if (!tenant) return;
@@ -432,7 +593,14 @@
     stamp.textContent = `Updated ${new Date(data.refreshed_at).toLocaleString()}`;
     previewBox.append(stamp);
 
-    for (const item of data.items) {
+    /*
+     * A sample, not the archive. Showing every story made the overview two
+     * screens tall on its own and buried everything under it; the feed is the
+     * place to read them all.
+     */
+    const shown = data.items.slice(0, 4);
+
+    for (const item of shown) {
       const article = document.createElement("article");
 
       const heading = document.createElement("h3");
@@ -447,6 +615,13 @@
 
       article.append(heading, summary, source);
       previewBox.append(article);
+    }
+
+    if (data.items.length > shown.length) {
+      const more = document.createElement("p");
+      more.className = "small muted";
+      more.textContent = `and ${data.items.length - shown.length} more in the feed`;
+      previewBox.append(more);
     }
   }
 
@@ -496,6 +671,8 @@
     if (checkoutButton) checkoutButton.hidden = comped || subscribed;
     if (cancelButton) cancelButton.hidden = comped || !subscribed;
 
+    renderConsole();
+
     if (data.tenant.industry) {
       await refreshPreview();
     }
@@ -510,7 +687,9 @@
   async function refreshPreview({ announce = false } = {}) {
     const data = await api("GET", "/api/preview");
 
+    state.preview = data;
     renderPreview(data);
+    renderConsole();
 
     if (!announce) return;
 
