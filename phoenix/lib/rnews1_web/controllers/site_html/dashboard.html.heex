@@ -1,212 +1,249 @@
-<h1>Your company briefing</h1>
-<p id="message" role="status"></p>
+<%!--
+  The console. Everything here used to be one 4,000px column of six numbered
+  cards, so finding anything meant scrolling and the onboarding numbering never
+  stopped being onboarding. It is now a shell: a site switcher, a sidebar, and
+  one visible pane at a time, with an overview that answers the only question a
+  returning customer actually has — is my briefing live, and if not, what is
+  stopping it.
 
-<section class="card">
-  <h2>1. Choose your focus</h2>
+  Every element id below is a contract with app.js. Panes moved; ids did not.
+--%>
 
-  <form id="company-form">
-    <label>
-      Company name
-      <input name="name" required maxlength="100" />
-    </label>
+<div class="console">
+  <a class="skip" href="#console-main">Skip to content</a>
 
-    <label>
-      Company domain
-      <input name="domain" required placeholder="example.com" />
-    </label>
-
-    <label>
-      Industry
-      <input name="industry" required maxlength="100"
-             placeholder="Industrial robotics" />
-    </label>
-
-    <label>
-      Keyword 1
-      <input name="keyword1" required maxlength="60"
-             placeholder="warehouse automation" />
-    </label>
-
-    <label>
-      Keyword 2
-      <input name="keyword2" required maxlength="60"
-             placeholder="grippers" />
-    </label>
-
-    <label>
-      Briefing language
-      <select name="language">
-        <option value="en">English</option>
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <option value="de">German</option>
+  <header class="console-bar">
+    <div class="console-site">
+      <label class="visually-hidden" for="site-switcher">Current site</label>
+      <select id="site-switcher" aria-describedby="site-switcher-note">
+        <option value="">Loading…</option>
       </select>
-    </label>
+      <p id="site-switcher-note" class="small muted">Switch between the sites on this account.</p>
+    </div>
 
-    <p class="small">
-      One industry and two keywords. Three stories a day are written from them.
-    </p>
+    <p id="message" role="status" aria-live="polite"></p>
+  </header>
 
-    <button type="button" id="suggest">Suggest topics</button>
-    <button>Save and prepare preview</button>
-  </form>
-</section>
+  <div class="console-body">
+    <nav class="console-nav" aria-label="Sections">
+      <a href="#overview" data-pane-link="overview" aria-current="page">
+        Overview <span class="pill" id="nav-blockers" hidden></span>
+      </a>
+      <a href="#content" data-pane-link="content">Content</a>
+      <a href="#audience" data-pane-link="audience">Audience</a>
+      <a href="#site" data-pane-link="site">Site</a>
+      <a href="#billing" data-pane-link="billing">Billing</a>
+      <a href="#account" data-pane-link="account">Account</a>
+    </nav>
 
-<section class="card">
-  <h2>2. Preview and activate</h2>
+    <div class="console-main" id="console-main">
+      <%!-- ---- Overview ------------------------------------------------- --%>
+      <section class="pane" data-pane="overview">
+        <div class="pane-head">
+          <h1>Overview</h1>
+          <p class="small muted">Where your briefing stands today.</p>
+        </div>
 
-  <div id="preview">Save your topics to prepare a preview.</div>
+        <div class="status-card" id="status-card">
+          <p class="status-line"><span class="dot" id="status-dot"></span><strong id="status-headline">Checking…</strong></p>
+          <p class="small muted" id="status-detail"></p>
+        </div>
 
-  <button id="refresh-preview">Refresh preview</button>
+        <h2 class="section-label">Before it can publish</h2>
+        <ol class="checklist" id="checklist"></ol>
 
-  <p id="billing-status"></p>
-  <p id="comped-note" class="small ok" hidden></p>
+        <div class="grid-2">
+          <div class="card">
+            <h2>Your address</h2>
+            <p id="site-address" class="site-address"></p>
+            <p id="feed-links"></p>
+            <p id="publish-state" class="small"></p>
+          </div>
 
-  <button id="checkout" hidden>Activate for $25/month with PayPal →</button>
-  <button id="cancel" hidden>Cancel renewal</button>
-</section>
+          <div class="card">
+            <h2>Latest coverage</h2>
+            <div id="preview">Save your topics to prepare a preview.</div>
+            <button type="button" id="refresh-preview">Refresh preview</button>
+          </div>
+        </div>
+      </section>
 
-<section class="card">
-  <h2>3. Add your stakeholders</h2>
+      <%!-- ---- Content -------------------------------------------------- --%>
+      <section class="pane" data-pane="content" hidden>
+        <div class="pane-head">
+          <h1>Content</h1>
+          <p class="small muted">One industry and two keywords. Three stories a day are written from them.</p>
+        </div>
 
-  <p>
-    Your feed publishes once 10 people from your company are on board — you
-    plus 9 colleagues. Getting the right stakeholders reading the briefing is
-    what makes it useful across the business.
-  </p>
+        <div class="card">
+          <form id="company-form">
+            <div class="field-grid">
+              <label>Company name <input name="name" required maxlength="100" /></label>
+              <label>Company domain <input name="domain" required placeholder="example.com" /></label>
+              <label>Industry <input name="industry" required maxlength="100" placeholder="Industrial robotics" /></label>
+              <label>Briefing language
+                <select name="language">
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                </select>
+              </label>
+              <label>Keyword 1 <input name="keyword1" required maxlength="60" placeholder="warehouse automation" /></label>
+              <label>Keyword 2 <input name="keyword2" required maxlength="60" placeholder="grippers" /></label>
+            </div>
 
-  <p id="stakeholder-state" class="small"></p>
+            <div class="actions">
+              <button>Save and prepare preview</button>
+              <button type="button" class="secondary" id="suggest">Suggest topics</button>
+            </div>
+          </form>
+        </div>
+      </section>
 
-  <p class="small">
-    Add as many recipients as you like beyond the first 10. Every issue carries
-    a one-click unsubscribe, and an address that opts out or bounces is
-    suppressed across the whole platform and cannot be re-added.
-  </p>
+      <%!-- ---- Audience ------------------------------------------------- --%>
+      <section class="pane" data-pane="audience" hidden>
+        <div class="pane-head">
+          <h1>Audience</h1>
+          <p class="small muted">
+            Your feed publishes once 10 people from your company are on board — you plus 9
+            colleagues.
+          </p>
+        </div>
 
-  <form id="invite-form">
-    <label>
-      Stakeholder email
-      <input name="email" type="email" required />
-    </label>
+        <div class="card">
+          <p id="stakeholder-state" class="small"></p>
 
-    <label class="check">
-      <input name="authorised" type="checkbox" required />
-      I have the authority to add this person to this list and to send them
-      this newsletter.
-    </label>
+          <form id="invite-form">
+            <label>Stakeholder email <input name="email" type="email" required /></label>
+            <label class="check">
+              <input name="authorised" type="checkbox" required />
+              I have the authority to add this person to this list and to send them this newsletter.
+            </label>
+            <div class="actions"><button>Add recipient</button></div>
+          </form>
 
-    <button>Add recipient</button>
-  </form>
+          <p class="small muted">
+            Every issue carries a one-click unsubscribe, and an address that opts out or bounces is
+            suppressed across the whole platform and cannot be re-added.
+          </p>
 
-  <ul id="subscribers"></ul>
-</section>
+          <ul id="subscribers"></ul>
+        </div>
+      </section>
 
-<section class="card" id="site-card">
-  <h2>4. Your site</h2>
+      <%!-- ---- Site ----------------------------------------------------- --%>
+      <section class="pane" data-pane="site" hidden>
+        <div class="pane-head">
+          <h1>Site</h1>
+          <p class="small muted">Readers, the RSS feed and the embed all live at this address.</p>
+        </div>
 
-  <p>
-    Your briefing has its own address. Readers, the RSS feed and the embed all
-    live there — brand it with your name, or put it on a domain you own.
-  </p>
+        <div class="card">
+          <h2>Address</h2>
+          <form id="subdomain-form">
+            <label>Subdomain
+              <span class="affix">
+                <input name="subdomain" required minlength="3" maxlength="63"
+                       pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
+                       autocomplete="off" spellcheck="false" />
+                <span class="suffix" id="sites-domain"></span>
+              </span>
+            </label>
+            <p class="small muted" id="rename-note"></p>
+            <div class="actions"><button class="secondary">Rename</button></div>
+          </form>
+        </div>
 
-  <p id="site-address" class="site-address"></p>
+        <div class="card">
+          <h2>Custom domain <span id="plan-badge" class="badge" hidden></span></h2>
+          <p class="small muted" id="domain-intro">
+            Point a hostname you control at your site. Add it here, then create the DNS record
+            shown. It goes live the moment the record is visible.
+          </p>
 
-  <form id="subdomain-form">
-    <label>
-      Subdomain
-      <span class="affix">
-        <input name="subdomain" required minlength="3" maxlength="63"
-               pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
-               autocomplete="off" spellcheck="false" />
-        <span class="suffix" id="sites-domain"></span>
-      </span>
-    </label>
+          <form id="domain-form">
+            <label>Hostname
+              <input name="hostname" placeholder="news.yourcompany.com" required
+                     maxlength="253" autocomplete="off" spellcheck="false" />
+            </label>
+            <div class="actions"><button class="secondary">Use this domain</button></div>
+          </form>
 
-    <p class="small" id="rename-note"></p>
+          <div id="domain-status" hidden>
+            <p id="domain-state" class="small"></p>
+            <table class="dns">
+              <thead><tr><th>Type</th><th>Name</th><th>Value</th></tr></thead>
+              <tbody id="dns-rows"></tbody>
+            </table>
+            <div class="actions">
+              <button type="button" class="secondary" id="verify-domain">Check DNS now</button>
+              <button type="button" class="danger" id="remove-domain">Remove domain</button>
+            </div>
+          </div>
+        </div>
 
-    <button>Rename</button>
-  </form>
+        <div class="card">
+          <h2>Feed and embed</h2>
+          <label>Iframe embed <textarea id="embed-code" readonly rows="3"></textarea></label>
+          <div class="actions"><button type="button" class="secondary" id="copy-digest">Copy branded digest</button></div>
+        </div>
+      </section>
 
-  <h3>Custom domain <span id="plan-badge" class="badge" hidden></span></h3>
+      <%!-- ---- Billing -------------------------------------------------- --%>
+      <section class="pane" data-pane="billing" hidden>
+        <div class="pane-head">
+          <h1>Billing</h1>
+          <p class="small muted">No card is needed to preview your coverage.</p>
+        </div>
 
-  <p class="small" id="domain-intro">
-    Point a hostname you control at your site — <code>news.yourcompany.com</code>
-    or <code>www.yourcompany.com</code>. Add it here, then create the DNS
-    record shown. It goes live the moment the record is visible.
-  </p>
+        <div class="card">
+          <p id="billing-status"></p>
+          <p id="comped-note" class="small ok" hidden></p>
+          <div class="actions">
+            <button id="checkout" hidden>Activate for $25/month with PayPal →</button>
+            <button id="cancel" class="secondary" hidden>Cancel renewal</button>
+          </div>
+        </div>
+      </section>
 
-  <form id="domain-form">
-    <label>
-      Hostname
-      <input name="hostname" placeholder="news.yourcompany.com" required
-             maxlength="253" autocomplete="off" spellcheck="false" />
-    </label>
+      <%!-- ---- Account -------------------------------------------------- --%>
+      <section class="pane" data-pane="account" hidden>
+        <div class="pane-head">
+          <h1>Account</h1>
+          <p class="small muted">You can always sign in by emailed link instead of a password.</p>
+        </div>
 
-    <button>Use this domain</button>
-  </form>
+        <div class="card" id="password-card">
+          <h2>Password</h2>
+          <p class="small" id="password-state"></p>
 
-  <div id="domain-status" hidden>
-    <p id="domain-state" class="small"></p>
+          <form id="password-form">
+            <label id="current-label" hidden>
+              Current password
+              <input name="current" type="password" autocomplete="current-password" />
+            </label>
+            <label>
+              <span id="password-label">New password</span>
+              <input name="password" type="password" minlength="8" autocomplete="new-password" required />
+            </label>
+            <p class="small muted">
+              At least 8 characters. Setting or changing it signs out every other session.
+            </p>
+            <div class="actions">
+              <button>Save password</button>
+              <button type="button" class="secondary" id="remove-password" hidden>Remove password</button>
+            </div>
+          </form>
+        </div>
 
-    <table class="dns">
-      <thead>
-        <tr><th>Type</th><th>Name</th><th>Value</th></tr>
-      </thead>
-      <tbody id="dns-rows"></tbody>
-    </table>
-
-    <p class="small">
-      The CNAME both routes traffic and verifies the domain. If your DNS
-      provider proxies or flattens CNAMEs, add the TXT record as well.
-    </p>
-
-    <button type="button" id="verify-domain">Check DNS now</button>
-    <button type="button" id="remove-domain">Remove domain</button>
+        <div class="card">
+          <h2>Session</h2>
+          <div class="actions"><button type="button" class="secondary" id="logout">Sign out</button></div>
+        </div>
+      </section>
+    </div>
   </div>
-</section>
-
-<section class="card">
-  <h2>Publish your feed</h2>
-
-  <p id="publish-state" class="small"></p>
-
-  <p id="feed-links"></p>
-
-  <label>
-    Iframe embed
-    <textarea id="embed-code" readonly></textarea>
-  </label>
-
-  <button id="copy-digest">Copy branded digest</button>
-</section>
-
-<section class="card" id="password-card">
-  <h2>Password</h2>
-
-  <p class="small" id="password-state"></p>
-
-  <form id="password-form">
-    <label id="current-label" hidden>
-      Current password
-      <input name="current" type="password" autocomplete="current-password" />
-    </label>
-
-    <label>
-      <span id="password-label">New password</span>
-      <input name="password" type="password" minlength="8"
-             autocomplete="new-password" required />
-    </label>
-
-    <p class="small">
-      At least 8 characters. Setting or changing it signs out every other
-      session. You can always sign in by emailed link instead.
-    </p>
-
-    <button>Save password</button>
-    <button type="button" id="remove-password" hidden>Remove password</button>
-  </form>
-</section>
-
-<button id="logout">Sign out</button>
+</div>
 
 <script src="/app.js" defer></script>
