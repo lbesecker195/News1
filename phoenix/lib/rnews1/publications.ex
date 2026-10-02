@@ -171,6 +171,35 @@ defmodule Rnews1.Publications do
     DB.execute("UPDATE publications SET languages = $2 WHERE id = $1", [id, languages])
   end
 
+  @doc """
+  The publications an account owns, newest last so the switcher is stable.
+
+  Ownership is a predicate in the WHERE, never a fetch-then-compare: the only
+  safe way to read somebody's row is to be unable to read anybody else's.
+  """
+  def list_for_tenant(nil), do: []
+
+  def list_for_tenant(tenant_id) do
+    DB.all("SELECT * FROM publications WHERE tenant_id = $1 ORDER BY created_at", [tenant_id])
+  end
+
+  def find_for_tenant(_id, nil), do: nil
+
+  def find_for_tenant(id, tenant_id) do
+    DB.one("SELECT * FROM publications WHERE id = $1 AND tenant_id = $2", [id, tenant_id])
+  end
+
+  @doc """
+  Hands a publication to an account. Idempotent, and refuses to move one that
+  somebody else already holds — adopting is for rows that have no owner.
+  """
+  def adopt(slug, tenant_id) do
+    DB.one(
+      "UPDATE publications SET tenant_id = $2 WHERE slug = $1 AND tenant_id IS NULL RETURNING *",
+      [slug, tenant_id]
+    )
+  end
+
   @doc "The locales one publication runs, for callers holding only a story's id."
   def languages_of(publication_id) do
     case DB.one("SELECT languages FROM publications WHERE id = $1", [publication_id]) do

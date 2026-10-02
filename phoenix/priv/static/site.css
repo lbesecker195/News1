@@ -813,3 +813,9 @@ button.danger:hover { border-color: var(--danger); }
   padding: 10px 14px; z-index: 10;
 }
 .skip:focus-visible { left: 8px; top: 8px; }
+
+/* [hidden] has to beat the display rules above it, or hiding a nav link or a
+ * card by attribute silently does nothing. */
+.console-nav a[hidden],
+.console-main .card[hidden],
+.console-main [data-briefing-only][hidden] { display: none; }

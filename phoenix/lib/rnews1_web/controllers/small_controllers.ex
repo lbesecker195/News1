@@ -72,7 +72,14 @@ defmodule Rnews1Web.DomainController do
         fail!(400, "That is already your subdomain.")
 
       {:error, :taken} ->
-        fail!(409, "That subdomain is taken.")
+        # "Taken" is unhelpful when the thing holding it is one of your own news
+        # sites: the owner reads it as a stranger having got there first and has
+        # no way to find out otherwise.
+        if Sites.publication_label?(subdomain) do
+          fail!(409, "#{Hosts.platform_host(subdomain)} is already one of your news sites. A briefing and a news site cannot share an address.")
+        else
+          fail!(409, "That subdomain is taken.")
+        end
 
       {:error, {:throttled, next_at}} ->
         wait = max(1, DateTime.diff(next_at, DateTime.utc_now(), :second))

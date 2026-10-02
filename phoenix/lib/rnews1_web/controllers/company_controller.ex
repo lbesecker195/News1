@@ -1,6 +1,6 @@
 defmodule Rnews1Web.CompanyController do
   use Rnews1Web, :controller
-  alias Rnews1.{Accounts, AI, Companies, Sites, Subscribers}
+  alias Rnews1.{Accounts, AI, Companies, Publications, Sites, Subscribers}
   alias Rnews1.Util.{Hosts, Ids}
   alias Rnews1Web.DomainController
   import Rnews1Web.Validation
@@ -31,6 +31,30 @@ defmodule Rnews1Web.CompanyController do
         language: tenant.language,
         billing_status: tenant.billing_status
       },
+      # Every site this account can switch between: the briefing fused to the
+      # tenants row, then each news site it owns. The briefing is always first
+      # because it is the one that cannot be removed.
+      sites:
+        [
+          %{
+            id: "briefing",
+            kind: "briefing",
+            label: tenant.name || tenant.subdomain,
+            origin: site.origin,
+            address: site.origin
+          }
+        ] ++
+          Enum.map(Publications.list_for_tenant(tenant.id), fn publication ->
+            %{
+              id: publication.slug,
+              kind: "publication",
+              label: publication.name,
+              origin: Hosts.publication_origin(publication),
+              address: Hosts.publication_origin(publication),
+              languages: publication.languages,
+              sections: Publications.section_names(publication.id)
+            }
+          end),
       password: %{set: password.set, setAt: password.password_set_at},
       subscribers: Subscribers.list_for_tenant(tenant.id),
       stakeholders: stakeholders(count, tenant.billing_status),

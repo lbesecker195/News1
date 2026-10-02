@@ -257,6 +257,50 @@ defmodule Rnews1Web.ArchiveTest do
       assert Rnews1Web.Analytics.project(%{archive: true}) == "www"
     end
 
+    test "an account sees only the publications it owns, and the briefing first", %{conn: conn, other: other} do
+      %{tenant_id: mine} = paid_tenant(stakeholders: 1)
+      secret = Rnews1.Util.Ids.token()
+      Rnews1.Accounts.create_session_for(mine, Rnews1.Util.Ids.hash(secret))
+
+      assert Rnews1.Publications.list_for_tenant(mine) == []
+
+      assert Rnews1.Publications.adopt(other.slug, mine)
+      assert Enum.map(Rnews1.Publications.list_for_tenant(mine), & &1.slug) == [other.slug]
+
+      # Adoption is for unowned rows: it must not take one somebody else holds.
+      %{tenant_id: theirs} = paid_tenant(email: "someone@else.test", stakeholders: 1)
+      refute Rnews1.Publications.adopt(other.slug, theirs)
+      assert Rnews1.Publications.list_for_tenant(theirs) == []
+      assert Rnews1.Publications.find_for_tenant(other.id, theirs) == nil
+
+      me = json_of(conn |> as_tenant(secret) |> get("/api/me"))
+
+      assert [briefing | rest] = me["sites"]
+      assert briefing["kind"] == "briefing"
+      assert Enum.map(rest, & &1["id"]) == [other.slug]
+      assert hd(rest)["address"] =~ "news.fashionshowon.test"
+    end
+
+    test "renaming onto one of your own news sites says so, rather than 'taken'", %{conn: conn} do
+      %{tenant_id: tenant_id} = paid_tenant(stakeholders: 1)
+      secret = Rnews1.Util.Ids.token()
+      Rnews1.Accounts.create_session_for(tenant_id, Rnews1.Util.Ids.hash(secret))
+
+      Rnews1.Publications.create(%{
+        slug: "mysite",
+        name: "My Site",
+        hostname: "mysite.rnews1.test",
+        languages: ["en"],
+        sections: [%{name: "News", query: "news"}]
+      })
+
+      r = conn |> as_tenant(secret) |> with_origin() |> post("/api/site/subdomain", %{subdomain: "mysite"})
+
+      assert r.status == 409
+      assert json_of(r)["error"] =~ "already one of your news sites"
+      refute json_of(r)["error"] =~ "is taken"
+    end
+
     test "the TLS gate vouches for its hostname, which classify cannot recognise", %{conn: conn} do
       ok = conn |> get("/.well-known/tls-ask?domain=news.fashionshowon.test")
       assert ok.status == 200

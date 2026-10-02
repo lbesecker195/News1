@@ -41,13 +41,15 @@
       <section class="pane" data-pane="overview">
         <div class="pane-head">
           <h1>Overview</h1>
-          <p class="small muted">Where your briefing stands today.</p>
+          <p class="small muted" id="overview-sub">Where your briefing stands today.</p>
         </div>
 
         <div class="status-card" id="status-card">
           <p class="status-line"><span class="dot" id="status-dot"></span><strong id="status-headline">Checking…</strong></p>
           <p class="small muted" id="status-detail"></p>
         </div>
+
+        <div id="site-detail" hidden></div>
 
         <h2 class="section-label">Before it can publish</h2>
         <ol class="checklist" id="checklist"></ol>
@@ -56,11 +58,17 @@
           <div class="card">
             <h2>Your address</h2>
             <p id="site-address" class="site-address"></p>
-            <p id="feed-links"></p>
-            <p id="publish-state" class="small"></p>
+            <p id="feed-links" data-briefing-only></p>
+            <p id="publish-state" class="small" data-briefing-only></p>
           </div>
 
-          <div class="card">
+          <%!--
+            The preview, the feed links and the publish gate are briefing
+            concepts. A news site publishes articles at its own URLs and has no
+            roster to gate on, so these are hidden rather than shown answering
+            a question nobody asked.
+          --%>
+          <div class="card" data-briefing-only>
             <h2>Latest coverage</h2>
             <div id="preview">Save your topics to prepare a preview.</div>
             <button type="button" id="refresh-preview">Refresh preview</button>
