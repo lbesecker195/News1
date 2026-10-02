@@ -236,10 +236,21 @@
   }
 
   function renderConsole() {
+    /* The switcher decides which site's state is on screen, so it goes first
+     * and renders the status for whichever site ends up selected. */
+    renderSwitcher();
+  }
+
+  function renderBlockers(isPublication) {
     const holders = state.stakeholders || {};
-    const reqs = requirements();
+    const reqs = isPublication ? [] : requirements();
     const blocking = reqs.filter(r => !r.done);
-    const live = Boolean(holders.published);
+    /*
+     * A news site is live the moment it is served; it has no stakeholder roster
+     * to fill and no feed gate to pass. Judging it by the briefing's checklist
+     * would report it as permanently blocked on things it cannot have.
+     */
+    const live = isPublication || Boolean(holders.published);
 
     const card = $("#status-card");
     const dot = $("#status-dot");
@@ -249,13 +260,23 @@
     if (card && dot && headline && detail) {
       card.className = `status-card ${live ? "live" : blocking.length ? "blocked" : ""}`.trim();
       dot.className = `dot ${live ? "live" : blocking.length ? "blocked" : ""}`.trim();
-      headline.textContent = live ? "Your briefing is live." : "Not published yet.";
-      detail.textContent = live
-        ? "Readers, the RSS feed and the embed are all serving."
-        : blocking.length === 1
-          ? `One thing left: ${blocking[0].title.toLowerCase()}.`
-          : `${blocking.length} things left before it publishes.`;
+      headline.textContent = isPublication
+        ? "This news site is live."
+        : live
+          ? "Your briefing is live."
+          : "Not published yet.";
+
+      detail.textContent = isPublication
+        ? "Articles are written for its sections on the daily run."
+        : live
+          ? "Readers, the RSS feed and the embed are all serving."
+          : blocking.length === 1
+            ? `One thing left: ${blocking[0].title.toLowerCase()}.`
+            : `${blocking.length} things left before it publishes.`;
     }
+
+    const label = document.querySelector(".section-label");
+    if (label) label.hidden = isPublication;
 
     const list = $("#checklist");
 
@@ -299,25 +320,122 @@
       badge.textContent = blocking.length ? String(blocking.length) : "";
       badge.hidden = blocking.length === 0;
     }
-
-    const switcher = $("#site-switcher");
-
-    if (switcher && state.site) {
-      /* One site today. The control exists now so that the day an account owns
-       * several, nothing about this page has to move. */
-      const sites = state.sites?.length ? state.sites : [{ id: "current", label: state.tenant?.name || state.site.subdomain, origin: state.site.origin }];
-      switcher.replaceChildren();
-
-      for (const s of sites) {
-        const option = document.createElement("option");
-        option.value = s.id;
-        option.textContent = s.label;
-        switcher.append(option);
-      }
-
-      switcher.disabled = sites.length < 2;
-    }
   }
+
+  /* ---- switching between the account's sites ------------------------------
+   * The briefing and each news site are different products sharing one login,
+   * so switching is not cosmetic: a news site has no topics, no stakeholders
+   * and no feed gate, and showing it those panes would be inventing state it
+   * does not have. The selection is remembered so a reload stays where you were.
+   */
+  const SITE_KEY = "rnews1:site";
+  const BRIEFING_ONLY = ["content", "audience", "billing"];
+
+  function selectedSite() {
+    const sites = state.sites || [];
+    if (!sites.length) return null;
+
+    let wanted = null;
+
+    try { wanted = window.localStorage.getItem(SITE_KEY); } catch { /* private window */ }
+
+    return sites.find(s => s.id === wanted) || sites[0];
+  }
+
+  function renderSwitcher() {
+    const switcher = $("#site-switcher");
+    const sites = state.sites || [];
+
+    if (!switcher || !sites.length) return;
+
+    const current = selectedSite();
+
+    switcher.replaceChildren();
+
+    for (const s of sites) {
+      const option = document.createElement("option");
+      option.value = s.id;
+      option.textContent = s.kind === "briefing" ? `${s.label} — briefing` : `${s.label} — news site`;
+      option.selected = s.id === current.id;
+      switcher.append(option);
+    }
+
+    switcher.disabled = sites.length < 2;
+
+    const note = $("#site-switcher-note");
+
+    if (note) {
+      note.textContent = sites.length < 2
+        ? "This account has one site."
+        : `${sites.length} sites on this account.`;
+    }
+
+    applySite(current);
+  }
+
+  function applySite(site) {
+    if (!site) return;
+
+    /*
+     * The address shown is the selected site's, not the tenant's. Reading it
+     * off the tenant row is what made a news site claim to live at www.
+     */
+    const address = $("#site-address");
+
+    if (address) {
+      address.replaceChildren();
+      const link = document.createElement("a");
+      link.href = site.origin;
+      link.textContent = site.address.replace(/^https?:\/\//, "");
+      link.rel = "noopener";
+      link.target = "_blank";
+      address.append(link);
+      address.append(document.createTextNode(site.kind === "briefing" ? " — your briefing address." : " — your news site."));
+    }
+
+    const publication = site.kind === "publication";
+
+    for (const name of BRIEFING_ONLY) {
+      const link = document.querySelector(`[data-pane-link="${name}"]`);
+      if (link) link.hidden = publication;
+    }
+
+    /* Everything that only makes sense for a briefing: the RSS and embed links,
+     * the stakeholder gate, the preview. */
+    for (const el of document.querySelectorAll("[data-briefing-only]")) el.hidden = publication;
+
+    const sub = $("#overview-sub");
+    if (sub) sub.textContent = publication ? "Where this news site stands today." : "Where your briefing stands today.";
+
+    const detail = $("#site-detail");
+
+    if (detail) {
+      detail.hidden = !publication;
+
+      if (publication) {
+        detail.replaceChildren();
+        const p = document.createElement("p");
+        p.className = "small muted";
+        p.textContent = `Sections: ${(site.sections || []).join(", ") || "none yet"} · Languages: ${(site.languages || []).join(", ")}`;
+        detail.append(p);
+      }
+    }
+
+    /* A briefing-only pane must not stay open after switching away from it. */
+    if (publication && BRIEFING_ONLY.includes(currentPane())) window.location.hash = "#overview";
+
+    renderBlockers(publication);
+  }
+
+  const switcherEl = $("#site-switcher");
+
+  switcherEl?.addEventListener("change", event => {
+    try { window.localStorage.setItem(SITE_KEY, event.target.value); } catch { /* private window */ }
+
+    const site = (state.sites || []).find(s => s.id === event.target.value);
+    applySite(site);
+    say(`Switched to ${site?.label ?? "that site"}.`);
+  });
 
   function fillCompanyForm(tenant) {
     if (!tenant) return;
@@ -633,7 +751,9 @@
       rss: data.rss,
       embed: data.embed,
       stakeholders: data.stakeholders,
-      site: data.site
+      site: data.site,
+      sites: data.sites || [],
+      preview: state.preview
     };
 
     fillCompanyForm(data.tenant);

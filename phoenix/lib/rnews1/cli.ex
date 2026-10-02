@@ -115,6 +115,32 @@ defmodule Rnews1.CLI do
 
   def publication(["add" | _]), do: IO.puts("Usage: mix rnews1.publication add <slug> <hostname> [--name N] [--tagline T] [--languages a,b] [--sections \"Name:terms,...\"]")
 
+  # Hands an unowned publication to an account, so it appears in that account's
+  # site switcher. Refuses one that already has an owner rather than moving it.
+  def publication(["adopt", slug, email]) do
+    email = email |> String.trim() |> String.downcase()
+
+    case Rnews1.DB.one("SELECT id FROM tenants WHERE owner_email = $1", [email]) do
+      nil ->
+        raise("No account for #{email}.")
+
+      tenant ->
+        case Publications.adopt(slug, tenant.id) do
+          nil ->
+            existing = Publications.find_by_slug(slug)
+
+            if is_nil(existing),
+              do: raise("No publication with slug \"#{slug}\"."),
+              else: IO.puts("#{slug} already has an owner; nothing changed.")
+
+          publication ->
+            IO.puts("#{publication.name} (#{publication.hostname}) now belongs to #{email}.")
+        end
+    end
+  end
+
+  def publication(["adopt" | _]), do: IO.puts("Usage: mix rnews1.publication adopt <slug> <account-email>")
+
   def publication(_) do
     case Publications.list() do
       [] ->

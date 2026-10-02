@@ -130,7 +130,7 @@ defmodule Rnews1.House do
   The platform's own account: the archive at www is an enterprise tenant,
   comped, holding the archive's own subdomain. Made true on every boot.
   """
-  alias Rnews1.{DB, Env, Sites}
+  alias Rnews1.{DB, Env, Publications, Sites}
   alias Rnews1.Util.Hosts
 
   @reason "platform demo account — the archive at ARCHIVE_ORIGIN is this tenant's site"
@@ -142,19 +142,29 @@ defmodule Rnews1.House do
       label = Hosts.archive_label()
       tenant_id = DB.transaction(fn -> Sites.ensure_tenant(%{email: email}) end)
 
-      DB.one(
-        """
-        UPDATE tenants
-        SET plan = 'enterprise', billing_status = 'active', comped_reason = COALESCE(comped_reason, $3),
-            subdomain = CASE
-              WHEN $2::text IS NULL THEN subdomain
-              WHEN NOT EXISTS (SELECT 1 FROM tenants other WHERE other.subdomain = $2 AND other.id <> tenants.id) THEN $2
-              ELSE subdomain END
-        WHERE id = $1
-        RETURNING owner_email, subdomain, plan, comped_reason
-        """,
-        [tenant_id, label, @reason]
-      )
+      result =
+        DB.one(
+          """
+          UPDATE tenants
+          SET plan = 'enterprise', billing_status = 'active', comped_reason = COALESCE(comped_reason, $3),
+              subdomain = CASE
+                WHEN $2::text IS NULL THEN subdomain
+                WHEN NOT EXISTS (SELECT 1 FROM tenants other WHERE other.subdomain = $2 AND other.id <> tenants.id) THEN $2
+                ELSE subdomain END
+          WHERE id = $1
+          RETURNING owner_email, subdomain, plan, comped_reason
+          """,
+          [tenant_id, label, @reason]
+        )
+
+      # The archive belongs to the house account. Adopted here rather than in
+      # Publications.ensure_default/0 because that runs first at boot, when this
+      # tenant may not exist yet — or ever, if ARCHIVE_TENANT_EMAIL is unset.
+      # `tenant_id IS NULL` keeps it idempotent and stops it taking a row that
+      # has deliberately been pointed somewhere else.
+      Publications.adopt(Publications.default_slug(), tenant_id)
+
+      result
     end
   end
 end
