@@ -24,3 +24,5 @@
   <a :if={@page > 1} href={"?page=" <> to_string(@page - 1)}>← Newer</a>
   <a :if={@more} href={"?page=" <> to_string(@page + 1)}>Older →</a>
 </nav>
+<%!-- Only loaded where the section menu exists, and only when it has sections. --%>
+<script :if={@categories != []} src="/topics.js" defer></script>

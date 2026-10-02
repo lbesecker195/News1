@@ -2,7 +2,7 @@ defmodule Rnews1Web do
   @moduledoc "The entrypoint for the web interface: `use Rnews1Web, :controller` and `:html`."
 
   # Served at the root, as the Node app served them: /site.css, /app.js …
-  def static_paths, do: ~w(site.css app.js track.js article.js favicon.ico)
+  def static_paths, do: ~w(site.css app.js track.js article.js topics.js favicon.ico)
 
   def router do
     quote do

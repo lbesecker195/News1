@@ -512,11 +512,20 @@ button:disabled { opacity: 0.55; cursor: progress; }
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  /* Fades the trailing edge, so it reads as continuing rather than cut off. */
+}
+
+/*
+ * The trailing edge fades to say "this continues past the edge". That is a lie
+ * when every section already fits — it just dims the last one, which on a site
+ * with three sections is the only thing it ever does. topics.js adds the class
+ * while the row genuinely overflows, so no JS means no false signal rather than
+ * a permanent one.
+ */
+.topics.is-scrollable {
   mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 }
 
-[dir="rtl"] .topics {
+[dir="rtl"] .topics.is-scrollable {
   mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
 }
 
