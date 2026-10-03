@@ -130,32 +130,41 @@ defmodule Rnews1.House do
   The platform's own account: the archive at www is an enterprise tenant,
   comped, holding the archive's own subdomain. Made true on every boot.
   """
+  require Logger
   alias Rnews1.{DB, Env, Publications, Sites}
   alias Rnews1.Util.Hosts
 
-  @reason "platform demo account — the archive at ARCHIVE_ORIGIN is this tenant's site"
+  @reason "platform staff account — owns the archive publication"
 
+  @doc """
+  The platform's own account: enterprise, comped, and the owner of the archive.
+
+  It used to be given the archive's label as its own subdomain, because back
+  then the archive WAS this tenant's site. The archive is a publication now,
+  with its own row and its own hostname, and the two cannot share a host: a
+  tenant parked on the archive's host advertises a feed, an embed and hosted
+  articles that the archive router does not serve — all three 404 — while the
+  dashboard reports the feed as live. So the label is no longer taken, and a
+  tenant still holding one that belongs to a publication is moved off it.
+  """
   def ensure_house_account(email \\ Env.archive_tenant_email()) do
     if is_nil(email) or email == "" do
       nil
     else
-      label = Hosts.archive_label()
       tenant_id = DB.transaction(fn -> Sites.ensure_tenant(%{email: email}) end)
 
       result =
         DB.one(
           """
           UPDATE tenants
-          SET plan = 'enterprise', billing_status = 'active', comped_reason = COALESCE(comped_reason, $3),
-              subdomain = CASE
-                WHEN $2::text IS NULL THEN subdomain
-                WHEN NOT EXISTS (SELECT 1 FROM tenants other WHERE other.subdomain = $2 AND other.id <> tenants.id) THEN $2
-                ELSE subdomain END
+          SET plan = 'enterprise', billing_status = 'active', comped_reason = COALESCE(comped_reason, $2)
           WHERE id = $1
           RETURNING owner_email, subdomain, plan, comped_reason
           """,
-          [tenant_id, label, @reason]
+          [tenant_id, @reason]
         )
+
+      result = release_publication_label(tenant_id, result, email)
 
       # The archive belongs to the house account. Adopted here rather than in
       # Publications.ensure_default/0 because that runs first at boot, when this
@@ -167,4 +176,25 @@ defmodule Rnews1.House do
       result
     end
   end
+
+  # A tenant whose subdomain is a host one of our publications serves is on a
+  # host that answers with the wrong router. Only fires in that state, so a
+  # normal tenant is never moved.
+  defp release_publication_label(tenant_id, %{subdomain: subdomain} = result, email) do
+    if Sites.publication_label?(subdomain) do
+      case Sites.release_label(tenant_id, subdomain, email) do
+        nil ->
+          Logger.error("#{subdomain} belongs to a publication but no free label was available for #{email}.")
+          result
+
+        moved ->
+          Logger.info("Moved #{email} off #{subdomain}, which belongs to a publication, to #{moved}.")
+          %{result | subdomain: moved}
+      end
+    else
+      result
+    end
+  end
+
+  defp release_publication_label(_tenant_id, result, _email), do: result
 end
