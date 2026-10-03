@@ -203,6 +203,28 @@ defmodule Rnews1.Sites do
   end
 
   @doc """
+  Moves a tenant off a label onto a free one, returning the new label.
+
+  For a tenant parked on a host that is not its own. It does not count as a
+  rename: the owner did not ask for it, so it must not burn their once-a-day
+  allowance or leave them unable to choose a better name straight afterwards.
+  """
+  def release_label(tenant_id, from, email) do
+    base = Hosts.suggest_label(name: "", email: email)
+
+    label =
+      Enum.find_value(1..25, fn n ->
+        candidate = if n == 1, do: base, else: "#{base}-#{n}"
+        if label_free?(candidate, tenant_id), do: candidate
+      end)
+
+    if label do
+      DB.transaction(fn -> move_label(tenant_id, from, label, false) end)
+      label
+    end
+  end
+
+  @doc """
   Whether a tenant answers on this platform label, now or still by redirect.
 
   The mirror of publication_label?/1, for the other direction: a publication

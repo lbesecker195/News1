@@ -230,17 +230,29 @@ defmodule Rnews1Web.SitesTest do
       end
     end
 
-    test "www is the archive: unclaimable, and the house account owns it as an enterprise tenant", %{conn: conn} do
+    test "www is the archive: unclaimable, and the house account owns it as a publication", %{conn: conn} do
+      # The archive is a publication now, not this tenant's site. The house
+      # account owns it, but its own briefing must not sit on the archive's
+      # host: the archive router serves no feed, no embed and no hosted
+      # article, so a tenant parked there advertises three URLs that 404.
       house = House.ensure_house_account("me@rnews1.test")
-      assert house.subdomain == "www" and house.plan == "enterprise" and house.comped_reason
+      assert house.plan == "enterprise" and house.comped_reason
+      refute house.subdomain == "www"
+
       id = DB.value("SELECT id FROM tenants WHERE owner_email = 'me@rnews1.test'")
+      assert Enum.map(Rnews1.Publications.list_for_tenant(id), & &1.slug) == ["archive"]
+
       s = session_for(id)
       me = conn |> as_tenant(s) |> get("/api/me") |> json_of()
-      assert me["site"]["origin"] == "https://www.rnews1.test"
+      refute me["site"]["origin"] == "https://www.rnews1.test"
       assert me["site"]["entitlements"]["comped"]
+
+      # The archive still serves at www, from the archive router.
       root = conn |> on_host("www.rnews1.test") |> get("/")
       assert root.status == 302 and location(root) == "/en"
-      assert House.ensure_house_account("me@rnews1.test").subdomain == "www"
+
+      # Idempotent: a second boot neither moves it again nor puts it back.
+      assert House.ensure_house_account("me@rnews1.test").subdomain == house.subdomain
 
       squatter = paid_tenant(email: "squatter@acme.test")
       DB.execute("UPDATE tenants SET subdomain = 'www2' WHERE id = $1", [squatter.tenant_id])
