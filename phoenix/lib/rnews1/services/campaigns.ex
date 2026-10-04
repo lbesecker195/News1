@@ -14,7 +14,7 @@ defmodule Rnews1.Campaigns do
                count(*) FILTER (WHERE c.opted_out_at >= now() - ($1 || ' days')::interval)::int AS opted_out,
                count(*) FILTER (WHERE c.bounced_at >= now() - ($1 || ' days')::interval)::int AS bounced
         FROM outbox o LEFT JOIN contacts c ON c.id = o.contact_id
-        WHERE o.kind = 'campaign' AND o.created_at >= now() - ($1 || ' days')::interval
+        WHERE o.kind IN ('campaign', 'edition') AND o.created_at >= now() - ($1 || ' days')::interval
         """,
         [to_string(window_days)]
       ) || %{sent: 0, failed: 0, opted_out: 0, bounced: 0}

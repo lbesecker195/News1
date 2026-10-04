@@ -24,5 +24,21 @@
   <a :if={@page > 1} href={"?page=" <> to_string(@page - 1)}>← Newer</a>
   <a :if={@more} href={"?page=" <> to_string(@page + 1)}>Older →</a>
 </nav>
+<%!--
+  The newsletter is sent in English and links to the /en stories, so it is
+  offered on the English listings only.
+--%>
+<section :if={@language == "en"} class="newsletter-signup" aria-labelledby="newsletter-heading">
+  <h2 id="newsletter-heading">Get <%= @publication.name %> by email</h2>
+  <p>One email each morning: the day's stories, and the highlight of the week.</p>
+  <form method="post" action="/newsletter/subscribe">
+    <label>
+      Email address
+      <input type="email" name="email" required autocomplete="email" maxlength="254" />
+    </label>
+    <button>Subscribe</button>
+  </form>
+  <p class="small">One click to unsubscribe, any time.</p>
+</section>
 <%!-- Only loaded where the section menu exists, and only when it has sections. --%>
 <script :if={@categories != []} src="/topics.js" defer></script>

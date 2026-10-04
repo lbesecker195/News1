@@ -17,6 +17,7 @@ defmodule Rnews1Web.ArchiveController do
   plug :put_brand
   plug :put_publication
   plug :archive_redirect when action in [:article, :undated_article, :topic, :index]
+  plug :same_origin when action in [:subscribe]
 
   defp put_brand(conn, _), do: conn |> assign(:brand, Content.brand()) |> assign(:app_origin, Env.app_origin())
 
@@ -222,6 +223,69 @@ defmodule Rnews1Web.ArchiveController do
   # English when the publication runs it, otherwise whatever it does run: a
   # site with no English has to send an unmatched reader somewhere real.
   defp fallback_language(available), do: if("en" in available, do: "en", else: List.first(available) || "en")
+
+  # The app's CSRF defence, on a publication's own host: a state-changing request
+  # must come from a page that host served. Browsers always send Origin on a
+  # cross-site POST, so an exact match is enough without a token round trip.
+  defp same_origin(conn, _) do
+    if get_req_header(conn, "origin") == [conn.assigns.publication_origin] do
+      conn
+    else
+      conn |> send_resp(403, "Invalid request origin.") |> halt()
+    end
+  end
+
+  @doc """
+  Subscribes the address to this publication's daily edition, at once: every
+  address entered is taken as opted in, so there is no confirmation email.
+
+  Says the same thing whatever happened — new, already subscribed, or an address
+  that has opted out — so the form cannot be used to learn any of those things.
+  Only an address that is not one is told so.
+  """
+  def subscribe(conn, params) do
+    publication = conn.assigns.publication
+
+    case Rnews1.Newsletter.subscribe(publication, params["email"]) do
+      :ok ->
+        newsletter_page(conn, "You're subscribed",
+          "The #{publication.name} newsletter arrives each morning: the day's stories, and the highlight of the week. Every email has a one-click unsubscribe link.")
+
+      {:error, :invalid_email} ->
+        conn
+        |> put_status(400)
+        |> newsletter_page("That doesn't look like an email address", "Go back and check it, then try again.")
+    end
+  end
+
+  defp newsletter_page(conn, heading, message) do
+    conn
+    |> no_store()
+    |> page(title: heading, indexable: false)
+    |> render(:newsletter_message, heading: heading, message: message)
+  end
+
+  @doc """
+  The publication's latest newsletter edition, as the web version every emailed
+  copy links to from "View in a browser". Same template on every publication;
+  the host decides which one.
+
+  Kept out of search: it repeats the day's story openings under a URL whose
+  contents change every morning, and the stories themselves are what should rank.
+  """
+  def newsletter(conn, _) do
+    case Rnews1.Editions.build(conn.assigns.publication) do
+      nil ->
+        fail!(404, "No edition has been published here yet.")
+
+      edition ->
+        conn
+        |> public_cache(600)
+        |> put_resp_header("x-robots-tag", "noindex")
+        |> put_resp_content_type("text/html")
+        |> send_resp(200, Rnews1.EditionMail.render_html(edition))
+    end
+  end
 
   def robots(conn, _) do
     conn |> public_cache(3600) |> text("User-agent: *\nAllow: /\n\nSitemap: #{conn.assigns.publication_origin}/sitemap.xml\n")

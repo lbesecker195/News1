@@ -11,7 +11,7 @@ defmodule Rnews1.Mailer do
   @doc "Returns {:ok, message_id} or raises Rnews1.Mailer.Error."
   def send_email(%{to: to, subject: subject} = m) do
     form =
-      [from: Env.mailgun_from(), to: to, subject: subject] ++
+      [from: m[:from] || Env.mailgun_from(), to: to, subject: subject] ++
         if(m[:text], do: [text: m[:text]], else: []) ++
         if(m[:html], do: [html: m[:html]], else: []) ++
         if(m[:job_id], do: [{:"v:job_id", m[:job_id]}], else: []) ++

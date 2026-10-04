@@ -66,7 +66,7 @@ defmodule Rnews1.Publications do
         ON CONFLICT (slug) DO UPDATE SET hostname = EXCLUDED.hostname
         RETURNING *
         """,
-        [@default_slug, "Rnews1", Env.archive_host(), Languages.codes()]
+        [@default_slug, "RNews1", Env.archive_host(), Languages.codes()]
       )
 
     DB.execute(

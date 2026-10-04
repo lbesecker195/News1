@@ -828,3 +828,22 @@ button.danger:hover { border-color: var(--danger); }
 .console-nav a[hidden],
 .console-main .card[hidden],
 .console-main [data-briefing-only][hidden] { display: none; }
+
+/* ---- the newsletter sign-up ----------------------------------------------
+ * Closes a section listing, under a rule rather than in a box: boxes are for
+ * the edition's promotion, and the site should not look like an ad for itself.
+ */
+.newsletter-signup {
+  margin: 40px 0 8px;
+  padding-top: 24px;
+  border-top: 2px solid var(--ink);
+}
+.newsletter-signup h2 { font-family: var(--serif); font-size: 1.35rem; margin: 0 0 6px; }
+.newsletter-signup p { margin: 0 0 14px; color: var(--muted); }
+.newsletter-signup form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.newsletter-signup label { flex: 1 1 16rem; min-width: 0; margin: 0; }
+.newsletter-signup button { width: auto; margin: 0; min-height: 44px; }
+.newsletter-signup .small { margin: 10px 0 0; }
+
+.newsletter-page { padding: 24px 0 40px; max-width: var(--measure-reading); }
+.newsletter-page h1 { font-family: var(--serif); }
