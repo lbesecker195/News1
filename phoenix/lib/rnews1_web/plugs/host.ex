@@ -46,8 +46,23 @@ defmodule Rnews1Web.Plugs.Host do
     tenant = lookup(where)
 
     cond do
-      is_nil(tenant) and where.kind == :subdomain and where.reserved ->
-        assign(conn, :host_kind, :app)
+      # A platform subdomain with no site behind it — never claimed, malformed,
+      # or a reserved label — goes to the app, where the visitor can start one.
+      #
+      # 302, deliberately, not 301. Browsers cache a 301 for good, and a label
+      # that is free today is one anybody can claim tomorrow: a cached permanent
+      # redirect would keep sending people past a customer's real site.
+      #
+      # Old labels still in their redirect window never reach here: lookup/1
+      # found the tenant through subdomain_history, and the canonical 301 below
+      # takes them. Custom domains are left alone too, since one with no tenant
+      # is usually a customer partway through setting it up.
+      is_nil(tenant) and where.kind in [:subdomain, :none] ->
+        conn
+        |> put_resp_header("location", Rnews1.Env.app_origin() <> "/")
+        |> put_resp_header("cache-control", "no-store")
+        |> send_resp(302, "")
+        |> halt()
 
       is_nil(tenant) ->
         conn
