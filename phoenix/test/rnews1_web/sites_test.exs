@@ -47,9 +47,34 @@ defmodule Rnews1Web.SitesTest do
       for path <- ["/app", "/api/me", "/admin", "/login", "/privacy"] do
         assert (conn |> on_host("acme.rnews1.test") |> get(path)).status == 404
       end
-      nobody = conn |> on_host("nobody.rnews1.test") |> get("/")
-      assert nobody.status == 404
-      assert body_of(nobody) =~ "No site is set up at nobody.rnews1.test"
+      # A subdomain nobody has claimed goes to the app, where the visitor can
+      # start one. Temporary and uncached: the label is free to claim tomorrow,
+      # and a cached permanent redirect would hide the site that claims it.
+      nobody = conn |> on_host("nobody.rnews1.test") |> get("/en/anything")
+      assert nobody.status == 302
+      assert location(nobody) == "https://rnews1.test/"
+      assert get_resp_header(nobody, "cache-control") == ["no-store"]
+
+      # A reserved label has no site either, and goes to the same place.
+      assert location(conn |> on_host("mail.rnews1.test") |> get("/")) == "https://rnews1.test/"
+    end
+
+    test "a claimed label stops redirecting the moment it has a site", %{conn: conn} do
+      before = conn |> on_host("claimed-later.rnews1.test") |> get("/")
+      assert before.status == 302
+
+      %{tenant_id: id} = paid_tenant(email: "later@acme.test", stakeholders: @published)
+      DB.execute("UPDATE tenants SET subdomain = 'claimed-later' WHERE id = $1", [id])
+
+      refute (conn |> on_host("claimed-later.rnews1.test") |> get("/")).status == 302
+    end
+
+    test "a custom domain with no site is left alone rather than sent to the app", %{conn: conn} do
+      # Usually a customer partway through setting it up: telling them nothing is
+      # there yet is more useful than bouncing them to a sign-up page.
+      r = conn |> on_host("news.unclaimed.test") |> get("/")
+      assert r.status == 404
+      assert body_of(r) =~ "No site is set up at news.unclaimed.test"
     end
 
     test "shows coming soon while unpublished, and the app host still works", %{conn: conn} do
