@@ -46,7 +46,7 @@ defmodule Rnews1.Workers.Supervisor do
     children = [
       Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Content, step: &Worker.refresh_one_topic/0, interval: 30_000, drain: true, delay: 5_000}, id: :content),
       Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Delivery, step: &Worker.deliver_one/0, interval: 2_000, drain: true, delay: 5_000}, id: :delivery),
-      Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Scheduler, step: fn -> Worker.schedule_digests() end, interval: 60_000, drain: true, delay: 10_000}, id: :scheduler),
+      Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Scheduler, step: fn -> Worker.schedule_digests() || Worker.schedule_editions() end, interval: 60_000, drain: true, delay: 10_000}, id: :scheduler),
       Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Maintenance, step: &Worker.maintenance/0, interval: 600_000, drain: false, delay: 30_000}, id: :maintenance)
     ]
 

@@ -145,8 +145,22 @@ defmodule Rnews1Web.ArchiveRouter do
     plug :put_root_layout, html: {Rnews1Web.Layouts, :root}
   end
 
+  # The sign-up form puts whatever address is typed into it on a daily mailing,
+  # with no confirmation step, so it is limited like the login form is: per
+  # address of the requester, not per address typed.
+  pipeline :newsletter_signup do
+    plug Rnews1Web.Plugs.RateLimit, :newsletter
+  end
+
   scope "/", Rnews1Web do
     post "/e", EventController, :collect
+  end
+
+  # Every newsletter route sits above the language routes: "/newsletter" is one
+  # segment, and would otherwise be read as a language.
+  scope "/", Rnews1Web do
+    pipe_through [:browser, :newsletter_signup]
+    post "/newsletter/subscribe", ArchiveController, :subscribe
   end
 
   scope "/", Rnews1Web do
@@ -155,6 +169,7 @@ defmodule Rnews1Web.ArchiveRouter do
     get "/", ArchiveController, :root
     get "/robots.txt", ArchiveController, :robots
     get "/sitemap.xml", ArchiveController, :sitemap_index
+    get "/newsletter", ArchiveController, :newsletter
     # /sitemap-{lang}.xml is a single segment with a literal prefix, which a
     # Phoenix route cannot express; ArchiveController.index recognises it.
     get "/:language/:topic/:slug/:date", ArchiveController, :article

@@ -5,7 +5,7 @@ defmodule Rnews1.Worker do
   its own from a task or a test.
   """
   require Logger
-  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, DB, Digests, Domains, Env, IssueMail, Mailer, News, Outbox, PayPalEvents, PDF, Stories, StoryPipeline, Topics}
+  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, DB, Digests, Domains, EditionMail, Editions, Env, IssueMail, Mailer, News, Newsletter, Outbox, PayPalEvents, PDF, Publications, Stories, StoryPipeline, Topics}
   import Rnews1.Util.HTML, only: [escape: 1]
 
   # ---- content -------------------------------------------------------------------------
@@ -155,8 +155,107 @@ defmodule Rnews1.Worker do
           headers: unsubscribe_headers(payload["unsubscribeUrl"])
         }
 
+      "edition" ->
+        build_edition_message(payload)
+
       other ->
         raise Unbuildable, message: "Unknown outbox kind: #{other}"
+    end
+  end
+
+  # One reader's copy of a publication's edition. Built at send time rather than
+  # stored, so it carries that reader's unsubscribe link and the footer reason
+  # that is true of them.
+  defp build_edition_message(payload) do
+    publication =
+      Publications.find_by_slug(payload["publication"]) ||
+        raise(Unbuildable, message: "No publication #{inspect(payload["publication"])}")
+
+    reason = if payload["reason"] == "contact", do: :contact, else: :subscribed
+
+    case Editions.build(publication, date: payload["date"], unsubscribe_url: payload["unsubscribeUrl"], reason: reason) do
+      nil ->
+        raise Unbuildable, message: "Nothing was published for #{publication.slug} on #{payload["date"]}"
+
+      edition ->
+        %{
+          from: from_as(publication.name),
+          subject: edition.lead.headline,
+          text: EditionMail.render_text(edition),
+          html: EditionMail.render_html(edition),
+          tag: "edition",
+          headers: unsubscribe_headers(payload["unsubscribeUrl"])
+        }
+    end
+  end
+
+  # Each publication sends under its own name from the one verified address, so
+  # a FashionShowOn edition arrives as FashionShowOn. The name comes from the
+  # database, so anything that could break out of the header — quotes,
+  # backslashes, and above all CR and LF, which would let it inject headers — is
+  # stripped before it is used.
+  defp from_as(name) do
+    configured = Env.mailgun_from()
+    address = (case Regex.run(~r/<([^>]+)>/, configured), do: ([_, a] -> a; _ -> configured))
+    display = name |> to_string() |> String.replace(~r/["\\\r\n\x00-\x1f]/, "") |> String.trim()
+
+    if display == "", do: configured, else: ~s("#{display}" <#{address}>)
+  end
+
+  @doc """
+  Sends today's edition for one publication, then returns; the scheduler loop
+  calls it again until it returns nil, the way digests are scheduled.
+
+  Off unless EDITION_HOUR is set. A publication with nothing published today is
+  skipped without being claimed, so a content run that finishes late still gets
+  its edition on a later tick.
+  """
+  def schedule_editions(now \\ DateTime.utc_now()) do
+    hour = Env.edition_hour()
+
+    if is_nil(hour) or now.hour < hour do
+      nil
+    else
+      date = now |> DateTime.to_date() |> Date.to_iso8601()
+      Enum.find_value(Publications.list_active(), &schedule_edition(&1, date, now))
+    end
+  end
+
+  defp schedule_edition(publication, date, now) do
+    published? = Stories.editorial_on(publication.id, Editions.language(), date, 1) != []
+
+    claimed =
+      published? &&
+        DB.one(
+          "INSERT INTO edition_runs(publication_id, edition_date) VALUES($1, $2::date) ON CONFLICT DO NOTHING RETURNING publication_id",
+          [publication.id, DB.date(date)]
+        )
+
+    if claimed do
+      queued =
+        publication
+        |> Newsletter.audience()
+        |> Enum.count(fn r ->
+          Outbox.enqueue(%{
+            contact_id: r.contact_id,
+            to_email: r.email,
+            kind: "edition",
+            payload: %{publication: publication.slug, date: date, reason: to_string(r.reason), unsubscribeUrl: Newsletter.unsubscribe_url(r)},
+            # A day's edition is worth nothing tomorrow. While a new sending
+            # domain is warming up it may not all go in one day, and the rest
+            # should lapse rather than arrive a day late.
+            expires_at: DateTime.add(now, 20 * 3600, :second),
+            dedupe_key: "edition:#{publication.id}:#{r.contact_id}:#{date}"
+          }) != nil
+        end)
+
+      DB.execute("UPDATE edition_runs SET recipients = $3 WHERE publication_id = $1 AND edition_date = $2::date", [
+        publication.id,
+        DB.date(date),
+        queued
+      ])
+
+      %{publication: publication.slug, date: date, recipients: queued}
     end
   end
 
@@ -213,7 +312,9 @@ defmodule Rnews1.Worker do
   end
 
   defp deliver(job) do
-    paused = if job.kind == "campaign", do: Campaigns.assert_healthy()
+    # Editions reach business contacts who never subscribed, so they share the
+    # campaign brake: past the complaint or bounce threshold both stop together.
+    paused = if job.kind in ["campaign", "edition"], do: Campaigns.assert_healthy()
 
     cond do
       paused ->

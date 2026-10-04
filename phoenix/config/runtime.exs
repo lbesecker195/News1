@@ -69,6 +69,8 @@ if env != :test do
     openai_model: read.("OPENAI_MODEL", "gpt-5.6-luna"),
     ssa_account_id: read.("SSA_ACCOUNT_ID", nil),
     digest_hour: integer.("DIGEST_HOUR", 13),
+    # UTC hour the daily newsletter editions go out. Unset or "off" sends none.
+    edition_hour: read.("EDITION_HOUR", nil),
     chrome_no_sandbox: read.("PUPPETEER_NO_SANDBOX", "") == "1" or read.("CHROME_NO_SANDBOX", "") == "1",
     chrome_executable: read.("CHROME_EXECUTABLE", nil)
 

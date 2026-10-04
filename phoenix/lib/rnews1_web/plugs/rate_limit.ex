@@ -61,6 +61,7 @@ defmodule Rnews1Web.Plugs.RateLimit do
     api              60 / minute
     invite           20 / hour
     public_feed     120 / minute
+    newsletter        5 / hour   — subscribes whatever address was typed, no confirmation
     admin_login      10 / 15 min — a password form
     password         10 / 15 min — password sign-in attempts
     beacon          120 / minute
@@ -74,6 +75,7 @@ defmodule Rnews1Web.Plugs.RateLimit do
     api: {60_000, 60},
     invite: {3_600_000, 20},
     public_feed: {60_000, 120},
+    newsletter: {3_600_000, 5},
     admin_login: {900_000, 10},
     password: {900_000, 10},
     beacon: {60_000, 120}

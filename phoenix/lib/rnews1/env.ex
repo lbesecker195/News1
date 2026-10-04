@@ -103,6 +103,18 @@ defmodule Rnews1.Env do
 
   def digest_hour, do: get(:digest_hour, 13)
 
+  @doc """
+  The UTC hour daily editions are sent, or nil while sending is off. Off is the
+  default: an edition sent before the sending domain is verified fails for good
+  rather than retrying, so it is switched on deliberately, once mail can go out.
+  """
+  def edition_hour do
+    case Integer.parse(to_string(get(:edition_hour) || "")) do
+      {hour, ""} when hour in 0..23 -> hour
+      _ -> nil
+    end
+  end
+
   def chrome_no_sandbox?, do: get(:chrome_no_sandbox, false) == true
   def chrome_executable, do: get(:chrome_executable)
 

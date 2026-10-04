@@ -160,6 +160,63 @@ defmodule Rnews1.Stories do
     )
   end
 
+  @doc "One day's stories for a publication, newest first: a daily edition's contents."
+  def editorial_on(publication_id, language, date, limit) do
+    DB.all(
+      """
+      SELECT id, language, slug, category, headline, standfirst, to_char(issue_date, 'YYYY-MM-DD') AS date_slug
+      FROM stories
+      WHERE origin = ANY($5) AND publication_id = $1 AND language = $2 AND issue_date = $3::date
+      ORDER BY published_at DESC LIMIT $4
+      """,
+      [publication_id, language, DB.date(date), limit, @archive_origins]
+    )
+  end
+
+  @doc "The most recent day a publication published anything in this language."
+  def latest_editorial_date(publication_id, language) do
+    DB.value(
+      """
+      SELECT to_char(max(issue_date), 'YYYY-MM-DD') FROM stories
+      WHERE origin = ANY($3) AND publication_id = $1 AND language = $2
+      """,
+      [publication_id, language, @archive_origins]
+    )
+  end
+
+  @doc """
+  The week's highlight: of the stories filed in the seven days before `date`,
+  the one most clicked through to on the publication's own site, ties going to
+  the newer.
+
+  click_events records link and button clicks, not page views: `path` is the
+  page a click happened ON and `target` is where it went. So a click-through to
+  a story is a `link` whose target is that story's path — counting `path` would
+  measure clicks made while already reading it, which is not the same thing.
+  The table carries no identifier, so this is a count and nothing more.
+
+  With no click-throughs at all — most weeks, until there is traffic — it
+  degrades to the most recent story of the week rather than to nothing.
+  """
+  def week_highlight(publication_id, language, date, host) do
+    DB.one(
+      """
+      SELECT s.id, s.language, s.slug, s.category, s.headline, s.standfirst,
+             to_char(s.issue_date, 'YYYY-MM-DD') AS date_slug,
+             (SELECT count(*)::int FROM click_events c
+              WHERE c.kind = 'link' AND c.host = $4 AND c.occurred_at > now() - interval '7 days'
+                AND c.target = '/' || s.language || '/' || lower(s.category) || '/' || s.slug || '/'
+                               || to_char(s.issue_date, 'YYYY-MM-DD')) AS reads
+      FROM stories s
+      WHERE s.origin = ANY($5) AND s.publication_id = $1 AND s.language = $2
+        AND s.issue_date >= $3::date - 7 AND s.issue_date < $3::date
+      ORDER BY reads DESC, s.published_at DESC
+      LIMIT 1
+      """,
+      [publication_id, language, DB.date(date), host, @archive_origins]
+    )
+  end
+
   def editorial_categories(publication_id, language) do
     DB.all(
       """
