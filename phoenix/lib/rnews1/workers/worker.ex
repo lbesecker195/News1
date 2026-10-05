@@ -125,19 +125,20 @@ defmodule Rnews1.Worker do
     case job.kind do
       "login" ->
         %{
-          subject: "Your Rnews1 sign-in link",
-          text: Enum.join(["Use this link to sign in to Rnews1:", payload["url"], "", "The link expires in 20 minutes and can only be used once.", "If you did not request it, you can ignore this email."], "\n"),
-          html: paragraphs(["Use this link to sign in to Rnews1:", link(payload["url"], "Sign in to Rnews1"), "The link expires in 20 minutes and can only be used once.", "If you did not request it, you can ignore this email."]),
+          subject: "Your RNews1 sign-in link",
+          text: Enum.join(["Use this link to sign in to RNews1:", payload["url"], "", "The link expires in 20 minutes and can only be used once.", "If you did not request it, you can ignore this email."], "\n"),
+          html: paragraphs(["Use this link to sign in to RNews1:", link(payload["url"], "Sign in to RNews1"), "The link expires in 20 minutes and can only be used once.", "If you did not request it, you can ignore this email."]),
           tag: "login"
         }
 
       "confirmation" ->
-        company = payload["company"] || "company"
+        company = if payload["company"] in [nil, ""], do: nil, else: payload["company"]
+        invited = "#{company || "A company"} has invited you to receive its daily industry newsletter, written by RNews1."
 
         %{
-          subject: "Confirm your #{company} briefing",
-          text: Enum.join(["#{payload["company"] || "A company"} has invited you to receive a", "daily Rnews1 news briefing.", "", "Confirm here:", payload["url"], "", "If you did not expect this, ignore this email and nothing is sent."], "\n"),
-          html: paragraphs(["#{escape(payload["company"] || "A company")} has invited you to receive a daily Rnews1 news briefing.", link(payload["url"], "Confirm my subscription"), "If you did not expect this, ignore this email and nothing is sent."]),
+          subject: if(company, do: "Confirm your #{company} newsletter", else: "Confirm your newsletter subscription"),
+          text: Enum.join([invited, "", "Confirm here:", payload["url"], "", "Every issue has a one-click unsubscribe link.", "If you did not expect this, ignore this email and nothing is sent."], "\n"),
+          html: paragraphs([escape(invited), link(payload["url"], "Confirm my subscription"), "Every issue has a one-click unsubscribe link.", "If you did not expect this, ignore this email and nothing is sent."]),
           tag: "confirmation"
         }
 
@@ -147,10 +148,19 @@ defmodule Rnews1.Worker do
       "campaign" ->
         greeting = if payload["name"], do: "Hi #{payload["name"]},", else: "Hello,"
 
+        pitch =
+          "RNews1 writes a daily industry newsletter. Pick one industry and two keywords; each day it finds fresh coverage, " <>
+            "writes up to three original stories crediting every publisher, and emails them to your list. " <>
+            "Once 10 addresses are on your list, every story also gets an indexable page on your hosted news site. " <>
+            "Built for email and search traffic."
+
+        price = "$25 a month, unlimited recipients, cancel online."
+        promotional = "This is a promotional email from RNews1."
+
         %{
-          subject: "One useful daily briefing for your team",
-          text: Enum.join([greeting, "", "Rnews1 turns the topics your company follows into a shared news", "feed, a website embed, and a daily email for your team.", "$25 a month, unlimited recipients, cancel online.", "", Env.app_origin(), "", "Unsubscribe: #{payload["unsubscribeUrl"]}", "", "Rnews1, #{Env.business_address()}"], "\n"),
-          html: paragraphs([escape(greeting), "Rnews1 turns the topics your company follows into a shared news feed, a website embed, and a daily email for your team. $25 a month, unlimited recipients, cancel online.", link(Env.app_origin(), "See how it works"), link(payload["unsubscribeUrl"], "Unsubscribe"), escape("Rnews1 · #{Env.business_address()}")]),
+          subject: "An industry newsletter you never have to write",
+          text: Enum.join([greeting, "", pitch, "", price, "See how it works: #{Env.app_origin()}", "", promotional, "Unsubscribe: #{payload["unsubscribeUrl"]}", "RNews1, #{Env.business_address()}"], "\n"),
+          html: paragraphs([escape(greeting), escape(pitch), escape(price), link(Env.app_origin(), "See how it works"), escape(promotional), link(payload["unsubscribeUrl"], "Unsubscribe"), escape("RNews1 · #{Env.business_address()}")]),
           tag: "campaign",
           headers: unsubscribe_headers(payload["unsubscribeUrl"])
         }

@@ -100,7 +100,7 @@ defmodule Rnews1Web.ArchiveController do
 
       conn
       |> public_cache(600)
-      |> page(title: story.headline, html_lang: language, dir: Languages.direction(language), body_class: "reading", indexable: true, canonical_url: canonical, alternates: alternates(conn.assigns.publication_origin, translations))
+      |> page(title: story.headline, html_lang: language, dir: Languages.direction(language), body_class: "reading", indexable: true, canonical_url: canonical, alternates: alternates(conn.assigns.publication_origin, translations), meta_description: story.standfirst)
       |> render(:article, story: story, date: Archive.date_of(story), minutes: ReadingTime.minutes(story.body), html: Markdown.render(story.body), related: Enum.map(more, &for_card/1), language: language, alternates: alternates(conn.assigns.publication_origin, translations))
     end
   end

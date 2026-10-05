@@ -17,7 +17,7 @@ defmodule Rnews1.Content do
 
   def report_defaults do
     %{
-      title: "Daily Briefing",
+      title: "Daily Newsletter",
       eyebrow: "{{company}}",
       footnote: "",
       labels: %{
@@ -45,7 +45,7 @@ defmodule Rnews1.Content do
       name: "rnews1",
       tagline: "Real News, made for One.",
       description:
-        "A newsletter written for one reader at a time. Real reporting, chosen and written for the person opening it. $25/month."
+        "Real News, Made for One. RNews1 writes daily news from published reporting, and automated industry newsletters for companies."
     }
   end
 

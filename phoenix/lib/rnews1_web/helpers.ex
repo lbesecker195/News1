@@ -11,7 +11,7 @@ defmodule Rnews1Web.ControllerHelpers do
   @doc "A page render with the layout's optional assigns defaulted."
   def page(conn, assigns \\ []) do
     conn
-    |> assign(:page_title, assigns[:title] || conn.assigns[:page_title] || "Rnews1")
+    |> assign(:page_title, assigns[:title] || conn.assigns[:page_title] || "RNews1")
     |> merge_assigns(assigns)
   end
 

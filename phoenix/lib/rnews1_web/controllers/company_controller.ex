@@ -91,7 +91,7 @@ defmodule Rnews1Web.CompanyController do
     # A freemail sign-up has a placeholder subdomain; the company name replaces it.
     if Hosts.placeholder_label?(conn.assigns.tenant.subdomain), do: Sites.adopt_name_label(conn.assigns.tenant.id, input.name)
 
-    json(conn, %{message: "Saved. The worker will prepare your preview shortly."})
+    json(conn, %{message: "Saved. RNews1 is finding coverage for your topics; your preview will appear shortly."})
   end
 
   def suggest(conn, _) do

@@ -138,9 +138,9 @@ defmodule Rnews1.IssueMail do
 
     """
     <div style="margin-top:22px;padding-top:14px;border-top:1px solid #{@line};color:#{@muted};font-size:0.8rem;">
-      <p style="margin:0 0 6px;">Written by Rnews1 from published reporting. Not original journalism — follow the links for the publishers' own coverage.</p>
-      <p style="margin:0 0 6px;"><a href="#{escape(Env.app_origin())}" style="color:#{@muted};">Powered by Rnews1</a>#{unsub}</p>
-      <p style="margin:0;">Rnews1 &middot; #{escape(Env.business_address())}</p>
+      <p style="margin:0 0 6px;">Written by RNews1 from published reporting. Not original journalism — follow the links for the publishers' own coverage.</p>
+      <p style="margin:0 0 6px;"><a href="#{escape(Env.app_origin())}" style="color:#{@muted};">Powered by RNews1</a>#{unsub}</p>
+      <p style="margin:0;">RNews1 &middot; #{escape(Env.business_address())}</p>
     </div>
     """
   end
@@ -166,9 +166,9 @@ defmodule Rnews1.IssueMail do
         if(ads[:sponsored], do: ["— SPONSORED —", ads.sponsored.headline, ads.sponsored.body, ads.sponsored.click_url, ""], else: []) ++
         if(rest != [], do: ["ALSO TODAY", "" | Enum.flat_map(rest, &[&1.headline, &1.standfirst, "Reported by #{&1.source_name} — #{safe_url(&1.source_url)}", ""])], else: []) ++
         Enum.flat_map(ads[:banners] || [], &["[Ad] #{&1.headline} — #{&1.body} #{&1.click_url}", ""]) ++
-        ["Written by Rnews1 from published reporting. Not original journalism.", "Powered by Rnews1 — #{Env.app_origin()}"] ++
+        ["Written by RNews1 from published reporting. Not original journalism.", "Powered by RNews1 — #{Env.app_origin()}"] ++
         if(unsubscribe_url, do: ["Unsubscribe: #{unsubscribe_url}"], else: []) ++
-        ["", "Rnews1, #{Env.business_address()}"]
+        ["", "RNews1, #{Env.business_address()}"]
 
     Enum.join(lines, "\n")
   end

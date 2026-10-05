@@ -28,7 +28,7 @@ defmodule Rnews1Web.FeedController do
     end
   end
 
-  defp unpublished!, do: fail!(409, "This feed is not published yet. It goes live once #{Subscribers.required_stakeholders()} stakeholders have been added in the dashboard.")
+  defp unpublished!, do: fail!(409, "This feed is not published yet. It goes live once the subscription is active and #{Subscribers.required_stakeholders()} addresses are on the newsletter list.")
 
   def present_story(tenant, story) do
     %{
@@ -111,20 +111,22 @@ defmodule Rnews1Web.FeedController do
     if is_nil(story) or story.topic_key != tenant.topic_key, do: fail!(404, "Article not found.")
     item = present_story(tenant, story)
 
+    # The story's own standfirst describes the page to a search engine; the
+    # layout falls back to its usual description when the story has none.
     conn
     |> public_cache(300)
-    |> page(title: story.headline, indexable: true, canonical_url: item.hosted_url, html_lang: tenant.language)
+    |> page(title: story.headline, indexable: true, canonical_url: item.hosted_url, html_lang: tenant.language, meta_description: story.standfirst)
     |> render(:article, tenant: tenant, item: item, site_url: Hosts.site_origin(tenant) <> "/")
   end
 
   # ---- briefs -------------------------------------------------------------------------
 
   defp require_brief(conn, id) do
-    if not Ids.uuid?(id), do: fail!(404, "Brief not found.")
-    record = Briefs.find_unexpired(id) || fail!(404, "Brief not found.")
+    if not Ids.uuid?(id), do: fail!(404, "Issue not found.")
+    record = Briefs.find_unexpired(id) || fail!(404, "Issue not found.")
 
     case conn.assigns[:site] do
-      %{tenant: %{id: tenant_id}} when record.tenant_id != tenant_id -> fail!(404, "Brief not found.")
+      %{tenant: %{id: tenant_id}} when record.tenant_id != tenant_id -> fail!(404, "Issue not found.")
       _ -> record
     end
   end
@@ -152,7 +154,7 @@ defmodule Rnews1Web.FeedController do
       Briefs.mark_pdf_written(record.id)
     end
 
-    conn |> no_store() |> send_download({:file, file}, filename: "briefing-#{record.date_slug || record.id}.pdf", content_type: "application/pdf")
+    conn |> no_store() |> send_download({:file, file}, filename: "newsletter-#{record.date_slug || record.id}.pdf", content_type: "application/pdf")
   end
 end
 

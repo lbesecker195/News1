@@ -76,7 +76,7 @@ defmodule Rnews1Web.DomainController do
         # sites: the owner reads it as a stranger having got there first and has
         # no way to find out otherwise.
         if Sites.publication_label?(subdomain) do
-          fail!(409, "#{Hosts.platform_host(subdomain)} is already one of your news sites. A briefing and a news site cannot share an address.")
+          fail!(409, "#{Hosts.platform_host(subdomain)} is already one of your news sites. A newsletter and a news site cannot share an address.")
         else
           fail!(409, "That subdomain is taken.")
         end

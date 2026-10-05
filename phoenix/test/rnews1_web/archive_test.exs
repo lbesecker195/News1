@@ -158,12 +158,12 @@ defmodule Rnews1Web.ArchiveTest do
       assert root.status == 302 and location(root) == "/en"
     end
 
-    test "carries its own masthead, with Rnews1 named only in the footer credit", %{conn: conn} do
+    test "carries its own masthead, with RNews1 named only in the footer credit", %{conn: conn} do
       for path <- ["/en", "/en/runway", "/en/runway/a-collection-arrived/#{@date}"] do
         body = body_of(conn |> fashion() |> get(path))
 
         assert body =~ "FashionShowOn", path
-        assert body =~ "Powered by Rnews1", path
+        assert body =~ "Powered by RNews1", path
 
         # Every other mention of the brand, its tagline and its product copy is
         # gone: the masthead, the title, the description, and the sign-in links
@@ -174,7 +174,8 @@ defmodule Rnews1Web.ArchiveTest do
         refute body =~ "— rnews1</title>", path
 
         # One mention, and it is the footer credit.
-        assert length(String.split(body, "Rnews1")) - 1 == 1, path
+        assert length(String.split(body, "RNews1")) - 1 == 1, path
+        refute body =~ "Rnews1", path
       end
     end
 

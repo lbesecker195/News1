@@ -221,16 +221,23 @@
         pane: "overview"
       },
       {
-        done: holders.remaining === 0,
-        title: "Add 10 stakeholders",
-        detail: holders.remaining ? `${holders.count} of ${holders.required} added` : `All ${holders.required || 10} added`,
-        pane: "audience"
-      },
-      {
         done: comped || tenant.billing_status === "active",
         title: "Activate the subscription",
         detail: comped ? "Not billed on this account" : "$25/month, cancel any time.",
         pane: "billing"
+      },
+      /*
+       * After activation, not before: the server refuses to add an address to
+       * an unpaid list (402), so listing this step first sent people to a form
+       * that could only fail.
+       */
+      {
+        done: holders.remaining === 0,
+        title: "Add 10 addresses to your list",
+        detail: holders.remaining
+          ? `${holders.count} of ${holders.required} on your list`
+          : `${holders.count ?? 0} on your list`,
+        pane: "audience"
       }
     ];
   }
@@ -251,6 +258,14 @@
      * would report it as permanently blocked on things it cannot have.
      */
     const live = isPublication || Boolean(holders.published);
+    /*
+     * Issues go out to an active subscription's list from the next send, long
+     * before the tenth address publishes the site. Saying "not published" with
+     * nothing else would tell a paying owner their newsletter is not going out.
+     */
+    const remaining = holders.remaining || 0;
+    const sending = !isPublication && !live &&
+      state.tenant?.billing_status === "active" && (holders.count || 0) > 0;
 
     const card = $("#status-card");
     const dot = $("#status-dot");
@@ -263,16 +278,22 @@
       headline.textContent = isPublication
         ? "This news site is live."
         : live
-          ? "Your briefing is live."
-          : "Not published yet.";
+          ? "Your newsletter and site are live."
+          : sending
+            ? "Your newsletter is sending. Your site is not published yet."
+            : "Not published yet.";
 
       detail.textContent = isPublication
         ? "Articles are written for its sections on the daily run."
         : live
-          ? "Readers, the RSS feed and the embed are all serving."
-          : blocking.length === 1
-            ? `One thing left: ${blocking[0].title.toLowerCase()}.`
-            : `${blocking.length} things left before it publishes.`;
+          ? "Your list gets the daily newsletter, and your site, RSS feed and embed are serving."
+          : sending && remaining
+            ? `Your list gets the daily newsletter. Add ${remaining} more address${
+              remaining === 1 ? "" : "es"
+            } to put your site, feed and embed live.`
+            : blocking.length === 1
+              ? `One thing left: ${blocking[0].title.toLowerCase()}.`
+              : `${blocking.length} things left before your site publishes.`;
     }
 
     const label = document.querySelector(".section-label");
@@ -355,7 +376,7 @@
     for (const s of sites) {
       const option = document.createElement("option");
       option.value = s.id;
-      option.textContent = s.kind === "briefing" ? `${s.label} — briefing` : `${s.label} — news site`;
+      option.textContent = s.kind === "briefing" ? `${s.label} — newsletter` : `${s.label} — news site`;
       option.selected = s.id === current.id;
       switcher.append(option);
     }
@@ -390,7 +411,7 @@
       link.rel = "noopener";
       link.target = "_blank";
       address.append(link);
-      address.append(document.createTextNode(site.kind === "briefing" ? " — your briefing address." : " — your news site."));
+      address.append(document.createTextNode(site.kind === "briefing" ? " — your site address." : " — your news site."));
     }
 
     const publication = site.kind === "publication";
@@ -405,7 +426,7 @@
     for (const el of document.querySelectorAll("[data-briefing-only]")) el.hidden = publication;
 
     const sub = $("#overview-sub");
-    if (sub) sub.textContent = publication ? "Where this news site stands today." : "Where your briefing stands today.";
+    if (sub) sub.textContent = publication ? "Where this news site stands today." : "Where your newsletter stands today.";
 
     const detail = $("#site-detail");
 
@@ -457,10 +478,10 @@
     active: "Subscription active.",
     approval_pending: "Waiting for you to approve the subscription at PayPal.",
     past_due: "A payment failed. Update your payment method at PayPal.",
-    suspended: "Subscription suspended at PayPal. Your feed is offline.",
+    suspended: "Subscription suspended at PayPal. Your newsletter and site are paused.",
     cancelled: "Renewals stopped. Your feed goes offline at the period end.",
-    expired: "Subscription expired. Your feed is offline.",
-    inactive: "Not subscribed yet. Your feed is private until you activate."
+    expired: "Subscription expired. Your newsletter and site are offline.",
+    inactive: "Not subscribed yet. Your site stays private and no issues are sent until you activate."
   };
 
   function renderSubscribers(rows) {
@@ -511,19 +532,20 @@
 
     if (stakeholderState) {
       stakeholderState.textContent = remaining
-        ? `${count} of ${required} stakeholders added — ` +
-          `${remaining} more to publish your feed.`
-        : `All ${required} stakeholders added.`;
+        ? `${count} of ${required} addresses on your list. ` +
+          `Add ${remaining} more to put your site, feed and embed live.`
+        : `${count} addresses on your list, enough to publish. ` +
+          "Keep adding: there is no recipient limit.";
       stakeholderState.className = remaining ? "small" : "small ok";
     }
 
     if (publishState) {
       publishState.textContent = published
-        ? "Your feed is live."
+        ? "Your site, feed and embed are live."
         : remaining
-          ? `Not published yet: add ${remaining} more stakeholder${
-            remaining === 1 ? "" : "s"
-          } to publish these links.`
+          ? `Not published yet: add ${remaining} more address${
+            remaining === 1 ? "" : "es"
+          } to your list to publish these links.`
           : "Not published yet: activate your subscription to publish these links.";
       publishState.className = published ? "small ok" : "small warn";
     }
@@ -543,11 +565,27 @@
     }
 
     if (embedCode) {
+      const title = `${state.tenant?.name || "Industry"} news`;
+
       embedCode.value =
         `<iframe src="${state.embed}" width="100%" height="600" ` +
-        'style="border:0" title="Company news"></iframe>';
+        `style="border:0" title="${escapeAttribute(title)}"></iframe>`;
     }
 
+  }
+
+  /*
+   * The embed snippet is pasted into the customer's own HTML, so a company
+   * name with a quote or an angle bracket in it would otherwise break out of
+   * the title attribute on their page.
+   */
+  function escapeAttribute(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   /*
@@ -612,9 +650,10 @@
 
     if (domainIntro && !enterprise) {
       domainIntro.textContent =
-        "Hosting your briefing on a hostname you own — news.yourcompany.com — " +
-        "is part of the enterprise plan, along with removing our mark from " +
-        "the embed. Your site stays live at its address above either way.";
+        "Moving your site to a hostname you own, such as news.yourcompany.com, " +
+        "is part of the enterprise plan: your story pages, sitemap and feed then " +
+        "live on your own domain, and our mark comes off the embed. Your site " +
+        "stays live at its address above either way.";
     }
 
     if (domainForm) {
@@ -1019,12 +1058,12 @@
     const { items } = await api("GET", "/api/preview");
 
     const digest = [
-      `${state.tenant?.name || "Company"} news briefing`,
+      `${state.tenant?.name || "Industry"} news`,
       "",
       ...(items || []).map(item =>
         `${item.title}\n${item.summary}\nSource: ${item.source}\n`
       ),
-      `Powered by Rnews1 — ${window.location.origin}`
+      `Powered by RNews1 — ${window.location.origin}`
     ].join("\n");
 
     await navigator.clipboard.writeText(digest);
