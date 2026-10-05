@@ -27,15 +27,15 @@ defmodule Rnews1Web.TenantSiteController do
     else
       items = tenant.topic_key |> Stories.recent_for_topic(@stories_on_index) |> Enum.map(&FeedController.present_story(tenant, &1))
       keywords = List.wrap(tenant.keywords)
-      industry = present(tenant.industry)
+      label = Rnews1Web.Templates.news_label(tenant.industry)
 
       conn
       |> public_cache(300)
-      |> page(title: home_title(tenant, industry), indexable: true, canonical_url: origin <> "/", html_lang: tenant.language, meta_description: home_description(tenant, industry))
+      |> page(title: home_title(tenant, label), indexable: true, canonical_url: origin <> "/", html_lang: tenant.language, meta_description: home_description(tenant, label))
       |> render(:index,
         tenant: tenant,
         items: items,
-        news_label: if(industry, do: "#{industry} news", else: "news"),
+        news_label: label,
         following: [tenant.industry | keywords] |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · "),
         feed_url: origin <> "/feed.xml"
       )
@@ -45,21 +45,21 @@ defmodule Rnews1Web.TenantSiteController do
   # The hosted home is written for someone arriving from a search, so its title
   # and description name the subject ("Acme: Robotics news") rather than the
   # product that writes it. Every part is optional in the row, and each one
-  # that is missing simply drops out of the sentence.
-  defp home_title(tenant, industry) do
-    case {present(tenant.name), industry} do
-      {nil, nil} -> "Daily news"
-      {nil, industry} -> "Daily #{industry} news"
-      {name, nil} -> "#{name} news"
-      {name, industry} -> "#{name}: #{industry} news"
+  # that is missing simply drops out of the sentence. `label` is the industry's
+  # news label ("Robotics news", or plain "news" without an industry).
+  defp home_title(tenant, label) do
+    case present(tenant.name) do
+      nil -> "Daily #{label}"
+      name when label == "news" -> "#{name} news"
+      name -> "#{name}: #{label}"
     end
   end
 
-  defp home_description(tenant, industry) do
+  defp home_description(tenant, label) do
     name = present(tenant.name)
     keywords = tenant.keywords |> List.wrap() |> Enum.map(&present/1) |> Enum.reject(&is_nil/1)
 
-    subject = Enum.join(Enum.reject(["Daily", industry, "news"], &is_nil/1), " ")
+    subject = "Daily #{label}"
     selected = if name, do: " selected for #{name}", else: ""
     following = if keywords != [], do: ", following #{join_and(keywords)}", else: ""
 

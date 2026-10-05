@@ -151,6 +151,35 @@ defmodule Rnews1Web.PositioningTest do
       end
     end
 
+    test "does not say news twice when the industry already ends in it", %{conn: conn} do
+      %{tenant_id: id} = paid_tenant(stakeholders: @published)
+      DB.execute("UPDATE tenants SET industry = 'Fashion News' WHERE id = $1", [id])
+
+      home = body_of(conn |> acme() |> get("/"))
+      feed = body_of(conn |> acme() |> get("/feed.xml"))
+
+      assert home =~
+               ~s(content="Daily Fashion News selected for Acme Robotics, following grippers.)
+
+      assert home =~ "<title>Acme Robotics: Fashion News — "
+      assert home =~ ~s(<p class="eyebrow">Daily Fashion News</p>)
+
+      assert feed =~
+               "<description>Daily Fashion News from Acme Robotics, written by RNews1</description>"
+
+      refute home =~ ~r/news news/i
+      refute feed =~ ~r/news news/i
+    end
+
+    test "labels coverage by industry, adding news only where it is missing" do
+      assert Rnews1Web.Templates.news_label("Robotics") == "Robotics news"
+      assert Rnews1Web.Templates.news_label("Fashion News") == "Fashion News"
+      assert Rnews1Web.Templates.news_label("  fintech news ") == "fintech news"
+      assert Rnews1Web.Templates.news_label("Newsletters") == "Newsletters news"
+      assert Rnews1Web.Templates.news_label(nil) == "news"
+      assert Rnews1Web.Templates.news_label("  ") == "news"
+    end
+
     test "escapes the company and its topics in the description and the title", %{conn: conn} do
       %{tenant_id: id} = paid_tenant(stakeholders: @published)
       DB.execute(~s(UPDATE tenants SET name = '"Acme" <b>', industry = 'R&D' WHERE id = $1), [id])

@@ -4,7 +4,7 @@
     <title><%= e(@tenant.name) %> news — RNews1</title>
     <link><%= e(@site_url) %></link>
     <atom:link href="<%= e(@feed_url) %>" rel="self" type="application/rss+xml" />
-    <description>Daily <%= if @tenant.industry not in [nil, ""] do %><%= e(@tenant.industry) %> <% end %>news<%= if @tenant.name not in [nil, ""] do %> from <%= e(@tenant.name) %><% end %>, written by RNews1</description>
+    <description>Daily <%= e(news_label(@tenant.industry)) %><%= if @tenant.name not in [nil, ""] do %> from <%= e(@tenant.name) %><% end %>, written by RNews1</description>
     <language><%= e(@tenant.language) %></language>
     <lastBuildDate><%= e(@last_build_date) %></lastBuildDate>
 <%= for item <- @items do %>

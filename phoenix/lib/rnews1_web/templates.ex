@@ -9,6 +9,18 @@ defmodule Rnews1Web.Templates do
 
   def e(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
+  @doc """
+  What a customer's coverage is called on its public pages: "Robotics news".
+  An industry typed as "Fashion News" already says it, and gets no second
+  "news"; a blank one is just "news".
+  """
+  def news_label(industry) do
+    case industry |> to_string() |> String.trim() do
+      "" -> "news"
+      industry -> if String.match?(industry, ~r/\bnews$/i), do: industry, else: "#{industry} news"
+    end
+  end
+
   EEx.function_from_file(:def, :rss, Path.join(__DIR__, "templates/rss.xml.eex"), [:assigns])
   EEx.function_from_file(:def, :sitemap, Path.join(__DIR__, "templates/sitemap.xml.eex"), [:assigns], trim: true)
   EEx.function_from_file(:def, :sitemap_index, Path.join(__DIR__, "templates/sitemap_index.xml.eex"), [:assigns], trim: true)
