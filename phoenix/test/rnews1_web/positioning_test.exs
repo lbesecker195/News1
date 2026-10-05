@@ -46,6 +46,25 @@ defmodule Rnews1Web.PositioningTest do
     |> String.replace(~r/\s+/, " ")
   end
 
+  # The name as a reader meets it: in a title, the wordmark or a sentence. A
+  # hostname (yourname.rnews1.com), an address or a storage key is an
+  # identifier and keeps its lower case, so it does not count here.
+  @old_casing ~r/(?<![\w.@\/:-])(?:rnews1|Rnews1)(?![\w\/-]|[.:]\w)/
+
+  defp title_of(conn) do
+    conn |> body_of() |> LazyHTML.from_document() |> LazyHTML.query("title") |> LazyHTML.text()
+  end
+
+  defp wordmark(conn) do
+    conn
+    |> body_of()
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("nav a.brand")
+    |> LazyHTML.text()
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
+  end
+
   defp acme(conn), do: on_host(conn, "acme.rnews1.test")
 
   describe "the app home page" do
@@ -363,6 +382,47 @@ defmodule Rnews1Web.PositioningTest do
         assert anonymous.text =~ "A company has invited you"
         refute anonymous.text =~ @retired
       end
+    end
+  end
+
+  describe "the RNews1 name" do
+    test "is how the app home titles itself and writes its wordmark", %{conn: conn} do
+      home = conn |> get("/")
+
+      assert home.status == 200
+      assert title_of(home) =~ ~r/ — RNews1$/
+      assert wordmark(home) =~ ~r/^RNews1 \//
+      refute visible_text(home) =~ @old_casing
+    end
+
+    test "is how a www archive page titles itself and writes its wordmark", %{conn: conn} do
+      archive_story()
+      page = conn |> on_host("www.rnews1.test") |> get("/en")
+
+      assert page.status == 200
+      assert title_of(page) =~ ~r/ — RNews1$/
+      assert wordmark(page) =~ ~r/^RNews1 \//
+      refute visible_text(page) =~ @old_casing
+    end
+
+    test "titles and credits a customer's hosted page under the customer's own masthead", %{
+      conn: conn
+    } do
+      paid_tenant(stakeholders: @published)
+      page = conn |> acme() |> get("/")
+
+      assert page.status == 200
+      assert title_of(page) == "Acme Robotics: Robotics news — RNews1"
+      assert wordmark(page) == "Acme Robotics / news"
+      assert visible_text(page) =~ "Powered by RNews1"
+      refute visible_text(page) =~ @old_casing
+    end
+
+    test "is also the built-in wordmark, so a broken content.json still reads RNews1" do
+      shipped = Content.file() |> File.read!() |> Jason.decode!() |> get_in(["brand", "name"])
+
+      assert shipped == "RNews1"
+      assert Content.brand_defaults().name == shipped
     end
   end
 end

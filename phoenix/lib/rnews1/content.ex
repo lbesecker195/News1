@@ -42,7 +42,7 @@ defmodule Rnews1.Content do
 
   def brand_defaults do
     %{
-      name: "rnews1",
+      name: "RNews1",
       tagline: "Real News, made for One.",
       description:
         "Real News, Made for One. RNews1 writes daily news from published reporting, and automated industry newsletters for companies."

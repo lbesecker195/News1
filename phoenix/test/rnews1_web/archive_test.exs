@@ -171,7 +171,7 @@ defmodule Rnews1Web.ArchiveTest do
         refute body =~ "Real News, made for One", path
         refute body =~ "written for one reader at a time", path
         refute body =~ "Sign in", path
-        refute body =~ "— rnews1</title>", path
+        refute body =~ "— RNews1</title>", path
 
         # One mention, and it is the footer credit.
         assert length(String.split(body, "RNews1")) - 1 == 1, path

@@ -5,7 +5,7 @@ defmodule Rnews1.PayPal do
   @timeout 30_000
   @expiry_margin 60_000
   @plan_cents 2500
-  @brand "Rnews1"
+  @brand "RNews1"
 
   defmodule Error do
     defexception [:message, status: 0, body: nil, retryable: false]
@@ -259,7 +259,7 @@ defmodule Rnews1.Billing do
 
     Companies.with_billing_lock(tenant_id, fn tenant ->
       if is_nil(tenant) or is_nil(tenant.paypal_subscription_id), do: raise(HttpError, status: 400, message: "No subscription to cancel.")
-      PayPal.cancel_subscription(tenant.paypal_subscription_id, "Cancelled from the Rnews1 dashboard")
+      PayPal.cancel_subscription(tenant.paypal_subscription_id, "Cancelled from the RNews1 dashboard")
       Companies.set_billing_status(tenant.id, tenant.paypal_subscription_id, "cancelled")
       %{message: "Renewals stopped. Your feed stays up until the paid period ends."}
     end)
