@@ -1,6 +1,6 @@
 defmodule Rnews1.Digests do
   @moduledoc "Which tenant is due today's digest, claimed under its row lock."
-  alias Rnews1.{Companies, DB}
+  alias Rnews1.{Companies, Contacts, DB}
 
   def with_tenant_due_for_digest(date, fun) do
     DB.transaction(fn ->
@@ -40,9 +40,18 @@ defmodule Rnews1.Digests do
     end)
   end
 
+  @doc """
+  Who RNews1's outreach email may go to: its own contacts only. A customer's
+  list is that customer's, and a newsletter sign-up asked for one site's news,
+  not for a sales pitch (see `Rnews1.Contacts`).
+  """
   def list_campaign_contacts(limit \\ 500) do
     DB.all(
-      "SELECT id, email, name, company, unsub_token FROM contacts WHERE opted_out_at IS NULL AND bounced_at IS NULL ORDER BY created_at LIMIT $1",
+      """
+      SELECT c.id, c.email, c.name, c.company, c.unsub_token FROM contacts c
+      WHERE #{Contacts.rnews1_own_sql()}
+      ORDER BY c.created_at LIMIT $1
+      """,
       [limit]
     )
   end

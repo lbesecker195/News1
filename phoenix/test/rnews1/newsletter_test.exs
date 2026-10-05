@@ -122,26 +122,88 @@ defmodule Rnews1.NewsletterTest do
       assert emails(fashion) == []
     end
 
-    test "a stakeholder is a business contact even if they first came in through a sign-up form",
-         %{archive: archive, fashion: fashion} do
+    test "a customer's list stays with that customer: none of it gets www's edition", %{
+      archive: archive,
+      fashion: fashion
+    } do
+      paid_tenant(stakeholders: 3)
+      assert emails(archive) == []
+      assert emails(fashion) == []
+    end
+
+    test "an address RNews1 imported stops being its contact once a customer adds it", %{
+      archive: archive
+    } do
       %{tenant_id: tenant_id} = paid_tenant()
-      Newsletter.subscribe(fashion, "stakeholder@acme.test")
+      DB.execute("INSERT INTO contacts(email, source) VALUES('reader@acme.test', 'import')", [])
 
       Subscribers.add_recipient(%{
         tenant_id: tenant_id,
-        email: "stakeholder@acme.test",
+        email: "reader@acme.test",
         authorised_by: "owner@acme.test"
       })
 
-      assert {"stakeholder@acme.test", :contact} in emails(archive)
+      assert emails(archive) == []
+    end
+
+    test "a sign-up on one site is not a business contact for www", %{
+      archive: archive,
+      fashion: fashion
+    } do
+      Newsletter.subscribe(fashion, "runway@example.test")
+
+      assert emails(archive) == []
+    end
+
+    test "a customer's reader who signs up on www gets www's edition, as a subscriber", %{
+      archive: archive
+    } do
+      paid_tenant(stakeholders: 1)
+      Newsletter.subscribe(archive, "stakeholder0@acme.test")
+
+      assert emails(archive) == [{"stakeholder0@acme.test", :subscribed}]
     end
 
     test "tenant owners are customers already and are left out of the contact group", %{
       archive: archive
     } do
+      DB.execute("INSERT INTO contacts(email, source) VALUES('owner@acme.test', 'import')", [])
+      assert {"owner@acme.test", :contact} in emails(archive)
+
       paid_tenant(email: "owner@acme.test")
 
       refute Enum.any?(emails(archive), fn {email, _} -> email == "owner@acme.test" end)
+    end
+
+    test "a reader the customer removed does not become RNews1's to mail", %{archive: archive} do
+      %{tenant_id: tenant_id} = paid_tenant()
+
+      Subscribers.add_recipient(%{
+        tenant_id: tenant_id,
+        email: "former@acme.test",
+        authorised_by: "owner@acme.test"
+      })
+
+      Subscribers.remove(tenant_id, "former@acme.test")
+
+      assert DB.value(
+               "SELECT count(*)::int FROM subscribers s JOIN contacts c ON c.id = s.contact_id WHERE c.email = 'former@acme.test'"
+             ) == 0
+
+      assert emails(archive) == []
+      assert Rnews1.Digests.list_campaign_contacts() == []
+    end
+
+    test "an imported contact who signs up on another site gets only that site's edition", %{
+      archive: archive,
+      fashion: fashion
+    } do
+      DB.execute("INSERT INTO contacts(email, source) VALUES('both@corp.test', 'import')", [])
+      Newsletter.subscribe(fashion, "both@corp.test")
+
+      assert emails(fashion) == [{"both@corp.test", :subscribed}]
+      assert emails(archive) == []
+      assert Rnews1.Digests.list_campaign_contacts() == []
     end
 
     test "a contact who also subscribed to the archive appears once, as a subscriber", %{
@@ -153,6 +215,62 @@ defmodule Rnews1.NewsletterTest do
       assert Enum.filter(emails(archive), fn {email, _} -> email == "both@corp.test" end) == [
                {"both@corp.test", :subscribed}
              ]
+    end
+  end
+
+  describe "RNews1's outreach campaign" do
+    defp campaign_emails, do: Rnews1.Digests.list_campaign_contacts() |> Enum.map(& &1.email)
+
+    test "goes to RNews1's own contacts and to no site's list", %{fashion: fashion} do
+      DB.execute("INSERT INTO contacts(email, source) VALUES('buyer@corp.test', 'import')", [])
+
+      DB.execute(
+        "INSERT INTO contacts(email, source, opted_out_at) VALUES('gone@corp.test', 'import', now())",
+        []
+      )
+
+      paid_tenant(email: "owner@acme.test", stakeholders: 2)
+      Newsletter.subscribe(fashion, "runway@example.test")
+
+      assert campaign_emails() == ["buyer@corp.test"]
+    end
+
+    test "leaves out a customer who first came in as an imported contact" do
+      DB.execute("INSERT INTO contacts(email, source) VALUES('owner@acme.test', 'import')", [])
+      paid_tenant(email: "owner@acme.test")
+
+      assert campaign_emails() == []
+    end
+
+    test "leaves out www's own sign-ups, who asked for the news and not a pitch", %{
+      archive: archive
+    } do
+      DB.execute("INSERT INTO contacts(email, source) VALUES('reader@corp.test', 'import')", [])
+      Newsletter.subscribe(archive, "reader@corp.test")
+
+      assert campaign_emails() == []
+    end
+
+    test "is checked again at send time, so a campaign queued earlier skips an address a customer has since added" do
+      %{tenant_id: tenant_id} = paid_tenant()
+      DB.execute("INSERT INTO contacts(email, source) VALUES('prospect@corp.test', 'import')", [])
+      assert Worker.plan_campaign("2026-09-10").queued == 1
+
+      Subscribers.add_recipient(%{
+        tenant_id: tenant_id,
+        email: "prospect@corp.test",
+        authorised_by: "owner@acme.test"
+      })
+
+      DB.execute(
+        "UPDATE outbox SET run_after = now() - interval '1 minute', expires_at = now() + interval '1 day' WHERE kind = 'campaign'",
+        []
+      )
+
+      assert %{suppressed: true} = Worker.deliver_one()
+
+      assert DB.one("SELECT status, last_error FROM outbox WHERE kind = 'campaign'") ==
+               %{status: "suppressed", last_error: "not an RNews1 contact"}
     end
   end
 
