@@ -227,7 +227,7 @@ defmodule Rnews1.Billing do
 
     Companies.with_billing_lock(tenant_id, fn tenant ->
       if is_nil(tenant) or is_nil(tenant.topic_key) or is_nil(tenant.domain),
-        do: raise(HttpError, status: 400, message: "Save your company settings first.")
+        do: raise(HttpError, status: 400, message: "Save your topics and company domain first.")
 
       existing = if tenant.paypal_subscription_id, do: PayPal.get_subscription(tenant.paypal_subscription_id)
 

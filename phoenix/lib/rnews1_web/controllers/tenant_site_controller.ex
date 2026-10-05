@@ -27,13 +27,56 @@ defmodule Rnews1Web.TenantSiteController do
     else
       items = tenant.topic_key |> Stories.recent_for_topic(@stories_on_index) |> Enum.map(&FeedController.present_story(tenant, &1))
       keywords = List.wrap(tenant.keywords)
+      industry = present(tenant.industry)
 
       conn
       |> public_cache(300)
-      |> page(title: "#{tenant.name} briefing", indexable: true, canonical_url: origin <> "/", html_lang: tenant.language)
-      |> render(:index, tenant: tenant, items: items, following: [tenant.industry | keywords] |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · "), feed_url: origin <> "/feed.xml")
+      |> page(title: home_title(tenant, industry), indexable: true, canonical_url: origin <> "/", html_lang: tenant.language, meta_description: home_description(tenant, industry))
+      |> render(:index,
+        tenant: tenant,
+        items: items,
+        news_label: if(industry, do: "#{industry} news", else: "news"),
+        following: [tenant.industry | keywords] |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · "),
+        feed_url: origin <> "/feed.xml"
+      )
     end
   end
+
+  # The hosted home is written for someone arriving from a search, so its title
+  # and description name the subject ("Acme: Robotics news") rather than the
+  # product that writes it. Every part is optional in the row, and each one
+  # that is missing simply drops out of the sentence.
+  defp home_title(tenant, industry) do
+    case {present(tenant.name), industry} do
+      {nil, nil} -> "Daily news"
+      {nil, industry} -> "Daily #{industry} news"
+      {name, nil} -> "#{name} news"
+      {name, industry} -> "#{name}: #{industry} news"
+    end
+  end
+
+  defp home_description(tenant, industry) do
+    name = present(tenant.name)
+    keywords = tenant.keywords |> List.wrap() |> Enum.map(&present/1) |> Enum.reject(&is_nil/1)
+
+    subject = Enum.join(Enum.reject(["Daily", industry, "news"], &is_nil/1), " ")
+    selected = if name, do: " selected for #{name}", else: ""
+    following = if keywords != [], do: ", following #{join_and(keywords)}", else: ""
+
+    "#{subject}#{selected}#{following}. Written from published reporting, with every source named."
+  end
+
+  defp present(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp present(_), do: nil
+
+  defp join_and([only]), do: only
+  defp join_and(list), do: Enum.join(Enum.drop(list, -1), ", ") <> " and " <> List.last(list)
 
   def unpublished(conn) do
     tenant = conn.assigns.site.tenant
@@ -42,7 +85,7 @@ defmodule Rnews1Web.TenantSiteController do
     |> put_view(html: Rnews1Web.TenantSiteHTML)
     |> put_status(409)
     |> no_store()
-    |> page(title: "#{tenant.name || "This briefing"} — coming soon")
+    |> page(title: "#{tenant.name || "This site"} — coming soon")
     |> render(:unpublished, tenant: tenant, required: Subscribers.required_stakeholders())
   end
 

@@ -244,8 +244,8 @@ defmodule Rnews1Web.SitesTest do
       assert (conn |> as_tenant(s) |> post("/api/site/subdomain", %{subdomain: "acme-news"})).status == 200
 
       big = paid_tenant(email: "owner@big.test", name: "Big Corp", plan: "enterprise", stakeholders: @published)
-      assert body_of(conn |> on_host("acme-news.rnews1.test") |> get("/embed")) =~ "Powered by Rnews1"
-      refute body_of(conn |> on_host("big.rnews1.test") |> get("/embed")) =~ "Powered by Rnews1"
+      assert body_of(conn |> on_host("acme-news.rnews1.test") |> get("/embed")) =~ "Powered by RNews1"
+      refute body_of(conn |> on_host("big.rnews1.test") |> get("/embed")) =~ ~r/Powered by RNews1/i
 
       DB.execute("UPDATE tenants SET comped_reason = 'demo' WHERE id = $1", [big.tenant_id])
       bs = session_for(big.tenant_id)

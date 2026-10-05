@@ -41,7 +41,7 @@
       <section class="pane" data-pane="overview">
         <div class="pane-head">
           <h1>Overview</h1>
-          <p class="small muted" id="overview-sub">Where your briefing stands today.</p>
+          <p class="small muted" id="overview-sub">Where your newsletter stands today.</p>
         </div>
 
         <div class="status-card" id="status-card">
@@ -51,7 +51,7 @@
 
         <div id="site-detail" hidden></div>
 
-        <h2 class="section-label">Before it can publish</h2>
+        <h2 class="section-label">Before your site can publish</h2>
         <ol class="checklist" id="checklist"></ol>
 
         <div class="grid-2">
@@ -80,7 +80,7 @@
       <section class="pane" data-pane="content" hidden>
         <div class="pane-head">
           <h1>Content</h1>
-          <p class="small muted">One industry and two keywords. Three stories a day are written from them.</p>
+          <p class="small muted">One industry and two keywords. Up to three stories a day are written from them, for your newsletter and your site.</p>
         </div>
 
         <div class="card">
@@ -89,7 +89,7 @@
               <label>Company name <input name="name" required maxlength="100" /></label>
               <label>Company domain <input name="domain" required placeholder="example.com" /></label>
               <label>Industry <input name="industry" required maxlength="100" placeholder="Industrial robotics" /></label>
-              <label>Briefing language
+              <label>Newsletter language
                 <select name="language">
                   <option value="en">English</option>
                   <option value="es">Spanish</option>
@@ -114,8 +114,9 @@
         <div class="pane-head">
           <h1>Audience</h1>
           <p class="small muted">
-            Your feed publishes once 10 people from your company are on board — you plus 9
-            colleagues.
+            Everyone you add gets the daily newsletter from the next send. Your own address
+            counts as the first; once 10 are on your list, your site, RSS feed and embed go
+            live, and they stay live while 10 or more remain.
           </p>
         </div>
 
@@ -123,7 +124,7 @@
           <p id="stakeholder-state" class="small"></p>
 
           <form id="invite-form">
-            <label>Stakeholder email <input name="email" type="email" required /></label>
+            <label>Recipient email <input name="email" type="email" required /></label>
             <label class="check">
               <input name="authorised" type="checkbox" required />
               I have the authority to add this person to this list and to send them this newsletter.
@@ -144,7 +145,10 @@
       <section class="pane" data-pane="site" hidden>
         <div class="pane-head">
           <h1>Site</h1>
-          <p class="small muted">Readers, the RSS feed and the embed all live at this address.</p>
+          <p class="small muted">
+            Your site, RSS feed and embed live at this address. Once it is published, every story
+            gets its own indexable page here, and the latest are listed in its sitemap.
+          </p>
         </div>
 
         <div class="card">

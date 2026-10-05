@@ -58,7 +58,7 @@ defmodule Rnews1Web.BriefsTest do
 
     File.write!(Content.file(), "{ not json,,, "); Content.reset_cache()
     broken = conn |> get("/brief/#{id}")
-    assert broken.status == 200 and body_of(broken) =~ "<h1>Daily Briefing</h1>"
+    assert broken.status == 200 and body_of(broken) =~ "<h1>Daily Newsletter</h1>"
 
     DB.execute("UPDATE tenants SET name = $1", ["<script>alert(1)</script>"])
     Content.reset_cache()

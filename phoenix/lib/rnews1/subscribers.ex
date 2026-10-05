@@ -1,8 +1,9 @@
 defmodule Rnews1.Subscribers do
   @moduledoc """
-  The stakeholder roster. Ten people from the company are meant to be
-  involved — an onboarding requirement, not a cap. The owner counts as the
-  first; the other nine are collected after payment.
+  The newsletter list. Ten active addresses publish the site, feed and embed:
+  an activation step that gets the owner building a list, not a cap and not a
+  team requirement, so any address counts. The owner counts as the first; the
+  rest are added after payment.
   """
   alias Rnews1.{Companies, DB, HttpError}
 
@@ -13,7 +14,7 @@ defmodule Rnews1.Subscribers do
     DB.value("SELECT count(*)::int FROM subscribers WHERE tenant_id=$1 AND state <> 'unsubscribed'", [tenant_id])
   end
 
-  @doc "The owner is stakeholder one, enrolled already confirmed. Idempotent."
+  @doc "The owner is address one, enrolled already confirmed. Idempotent."
   def enrol_owner(tenant_id, email) do
     contact =
       DB.one(

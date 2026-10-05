@@ -64,10 +64,10 @@ defmodule Rnews1.EditionMail do
         else: nil
       ),
       "FROM RNEWS1#{affiliate_suffix(edition)}",
-      "Get a briefing like this for your company",
+      "Your own industry newsletter, written for you",
       promo_body(),
       "",
-      "Start your company's briefing: #{cta_url(edition)}",
+      "Start your newsletter: #{cta_url(edition)}",
       "$25/month · Preview free, no card",
       disclosure_text(edition),
       "",
@@ -182,10 +182,10 @@ defmodule Rnews1.EditionMail do
     """
     <div style="margin-top:32px;background:#{@ground};border:1px solid #{@line};border-radius:10px;padding:22px 24px;">
       <div style="font-size:11px;line-height:16px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#{@muted};">From RNews1#{escape(affiliate_suffix(edition))}</div>
-      <div style="margin-top:10px;font-family:#{@serif};font-size:21px;line-height:27px;font-weight:700;color:#{@ink};">Get a briefing like this for your company</div>
+      <div style="margin-top:10px;font-family:#{@serif};font-size:21px;line-height:27px;font-weight:700;color:#{@ink};">Your own industry newsletter, written for you</div>
       <p style="margin:10px 0 0;font-size:15px;line-height:23px;color:#{@body};">#{escape(promo_body())}</p>
       <div style="margin-top:16px;">
-        <a href="#{safe_url(cta_url(edition))}" style="display:inline-block;background:#{@accent};color:#ffffff;text-decoration:none;font-size:15px;line-height:20px;font-weight:600;padding:12px 20px;border-radius:8px;">Start your company's briefing</a>
+        <a href="#{safe_url(cta_url(edition))}" style="display:inline-block;background:#{@accent};color:#ffffff;text-decoration:none;font-size:15px;line-height:20px;font-weight:600;padding:12px 20px;border-radius:8px;">Start your newsletter</a>
         <span style="display:inline-block;margin:8px 0 0 12px;font-size:13px;line-height:18px;color:#{@muted};">$25/month · Preview free, no card</span>
       </div>
       #{disclosure_html(edition)}
@@ -194,9 +194,9 @@ defmodule Rnews1.EditionMail do
   end
 
   defp promo_body do
-    "RNews1 writes a daily news briefing about your industry, from real reporting. " <>
-      "Every edition is customized to the individual recipient to maximize engagement — " <>
-      "each person on your team gets the stories most likely to matter to them."
+    "RNews1 writes your industry newsletter daily, for email and search traffic. " <>
+      "Each issue can be customized to the individual recipient to maximize interactions, " <>
+      "and once your site is live, every story gets an indexable page."
   end
 
   defp also_today([]), do: ""

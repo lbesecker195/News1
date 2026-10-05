@@ -37,7 +37,7 @@ defmodule Rnews1Web.SubscriberController do
     |> page(title: "Subscription")
     |> render(:message,
       heading: if(confirmed, do: "You're subscribed.", else: "This invitation is no longer valid."),
-      message: if(confirmed, do: "Your company briefing will arrive by email.", else: "Ask your account administrator for help.")
+      message: if(confirmed, do: "Your daily newsletter will arrive by email.", else: "Ask your account administrator for help.")
     )
   end
 

@@ -90,6 +90,27 @@ defmodule Rnews1.EditionsTest do
     refute a =~ ">Ad<"
   end
 
+  test "the promotion offers a newsletter of your own, in the HTML and the plain text", %{
+    archive: archive
+  } do
+    a = html(archive)
+
+    text =
+      archive
+      |> Editions.build(date: @day)
+      |> EditionMail.render_text()
+
+    assert a =~ ">Your own industry newsletter, written for you</div>"
+    assert a =~ ">Start your newsletter</a>"
+    assert a =~ "customized to the individual recipient"
+    refute a =~ ~r/advertisement|briefing/i
+
+    assert text =~ "FROM RNEWS1\nYour own industry newsletter, written for you\n"
+    assert text =~ "Start your newsletter: http"
+    assert text =~ "customized to the individual recipient"
+    refute text =~ ~r/advertisement|briefing/i
+  end
+
   test "the web version says so; an emailed copy carries a one-click unsubscribe", %{
     archive: archive
   } do

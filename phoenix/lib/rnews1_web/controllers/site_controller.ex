@@ -7,8 +7,19 @@ defmodule Rnews1Web.SiteController do
 
   defp put_brand(conn, _), do: conn |> assign(:brand, Content.brand()) |> assign(:app_origin, Env.app_origin()) |> assign(:support_email, Env.support_email())
 
+  # The sales pitch belongs to this page alone. content.json's brand description
+  # is the fallback for every www news page too, where a reader came for the news
+  # rather than for a product, so the home page carries its own description.
+  @home_description "Automated industry newsletter for search and email traffic: RNews1 writes daily stories on your topics, emails your list and gives each an indexable page."
+
   def home(conn, _params) do
-    conn |> page(title: "Real News, Made for One", indexable: true) |> render(:home)
+    conn
+    |> page(
+      title: "Automated industry newsletter for search and email traffic",
+      indexable: true,
+      meta_description: @home_description
+    )
+    |> render(:home)
   end
 
   def dashboard(conn, params) do
@@ -30,7 +41,7 @@ defmodule Rnews1Web.SiteController do
       conn
       |> no_store()
       |> page(title: if(register, do: "Create your account", else: "Sign in"), indexable: true)
-      |> render(:signin, heading: if(register, do: "Create your Rnews1 account", else: "Sign in to Rnews1"))
+      |> render(:signin, heading: if(register, do: "Create your RNews1 account", else: "Sign in to RNews1"))
     end
   end
 
@@ -46,7 +57,7 @@ defmodule Rnews1Web.SiteController do
     lines = [
       "User-agent: *",
       "",
-      "# Hosted stories, the journal archive, and public feeds.",
+      "# Hosted stories, the news archive, and public feeds.",
       "Allow: /news/",
       "Allow: /feed/",
       "",

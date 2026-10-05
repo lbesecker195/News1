@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title><%= e(@tenant.name) %> news — Rnews1</title>
+    <title><%= e(@tenant.name) %> news — RNews1</title>
     <link><%= e(@site_url) %></link>
     <atom:link href="<%= e(@feed_url) %>" rel="self" type="application/rss+xml" />
-    <description>Company news briefing powered by Rnews1</description>
+    <description>Daily <%= if @tenant.industry not in [nil, ""] do %><%= e(@tenant.industry) %> <% end %>news<%= if @tenant.name not in [nil, ""] do %> from <%= e(@tenant.name) %><% end %>, written by RNews1</description>
     <language><%= e(@tenant.language) %></language>
     <lastBuildDate><%= e(@last_build_date) %></lastBuildDate>
 <%= for item <- @items do %>
@@ -12,7 +12,7 @@
       <title><%= e(item.title) %></title>
       <link><%= e(item.hosted_url) %></link>
       <guid isPermaLink="true"><%= e(item.hosted_url) %></guid>
-      <description><%= e(item.summary) %> Source: <%= e(item.source) %>. Powered by Rnews1.</description>
+      <description><%= e(item.summary) %> Source: <%= e(item.source) %>. Powered by RNews1.</description>
       <pubDate><%= e(item.pub_date) %></pubDate>
     </item>
 <% end %>

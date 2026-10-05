@@ -1,3 +1,3 @@
-<h1><%= @tenant.name %> briefing</h1>
+<h1><%= @tenant.name %> news</h1>
 <.news_item :for={item <- @items} item={item} />
 <p><a href={"https://" <> to_string(@tenant.domain)} target="_blank" rel="noopener noreferrer">Visit <%= @tenant.name %></a></p>

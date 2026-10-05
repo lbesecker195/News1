@@ -7,7 +7,15 @@
   own_masthead = publication != nil and publication.slug != Rnews1.Publications.default_slug()
   masthead_name = if own_masthead, do: publication.name, else: @brand.name
   masthead_line = if own_masthead, do: publication.tagline, else: @brand.tagline
-  meta_description = if own_masthead, do: publication.tagline || publication.name, else: @brand.description
+
+  # A page that knows what it is about says so: a story by its standfirst, a
+  # customer's site by its own industry and topics. Without that, every hosted
+  # page would carry RNews1's description of itself to the search results.
+  meta_description =
+    case assigns[:meta_description] do
+      text when is_binary(text) and text != "" -> text
+      _ -> if own_masthead, do: publication.tagline || publication.name, else: @brand.description
+    end
 %>
 <!doctype html>
 <html lang={assigns[:html_lang] || "en"} dir={assigns[:dir] || "ltr"}>
@@ -19,7 +27,7 @@
   <% else %>
     <meta name="robots" content="noindex" />
   <% end %>
-  <title><%= if own_masthead do %><%= assigns[:page_title] || masthead_name %><%= if assigns[:page_title] && assigns[:page_title] != masthead_name do %> — <%= masthead_name %><% end %><% else %><%= assigns[:page_title] || "Rnews1" %> — <%= @brand.name %><% end %></title>
+  <title><%= if own_masthead do %><%= assigns[:page_title] || masthead_name %><%= if assigns[:page_title] && assigns[:page_title] != masthead_name do %> — <%= masthead_name %><% end %><% else %><%= assigns[:page_title] || "RNews1" %> — <%= @brand.name %><% end %></title>
   <%= if assigns[:canonical_url] do %>
     <link rel="canonical" href={@canonical_url} />
   <% end %>
@@ -53,7 +61,7 @@
   <nav>
     <%= if tenant do %>
       <a class="brand" href={site.origin <> "/"}>
-        <%= tenant.name || "Briefing" %><span> / briefing</span>
+        <%= tenant.name || "News" %><span> / news</span>
       </a>
       <%= if chrome do %>
         <span class="nav-links"><a href={site.origin <> "/feed.xml"}>RSS</a></span>
@@ -81,7 +89,7 @@
       <a href={"https://" <> tenant.domain} rel="noopener"><%= tenant.name %></a> ·
     <% end %>
     <%= if assigns[:branding] != false do %>
-      <a href={root <> "/"}>Powered by Rnews1</a> ·
+      <a href={root <> "/"}>Powered by RNews1</a> ·
     <% end %>
     <%= if chrome && !tenant && !own_masthead do %>
       <%= if assigns[:signed_in] do %>
