@@ -98,6 +98,11 @@ defmodule Rnews1Web.PositioningTest do
       assert body =~ "are scoped as custom work."
       assert body =~ ~r/<a href="mailto:[^"]+">Discuss enterprise →<\/a>/
     end
+
+    test "promises a customer's list is used only for their own newsletter", %{conn: conn} do
+      assert body_of(conn |> get("/")) =~
+               "Your list is used only to send your newsletter: RNews1 never mails it anything else"
+    end
   end
 
   describe "a customer's hosted home" do

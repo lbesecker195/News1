@@ -9,19 +9,18 @@ defmodule Rnews1.Newsletter do
       address entered is taken as opted in, so the subscription is live the
       moment the form is sent; there is no confirmation step. Told "you
       subscribed at <host>".
-    * business contacts — RNews1's existing contacts, who never used a sign-up
-      form. Told they are receiving it as a business contact. They get the
-      archive's edition only, never one per publication: a contact who signed
-      up for nothing should not find several of our emails a day. Someone who
-      is in contacts only because they subscribed to another publication is not
-      a business contact; they asked for that one site and get that one site.
+    * business contacts — RNews1's own contacts (`Rnews1.Contacts`), who never
+      used a sign-up form. Told they are receiving it as a business contact.
+      They get the archive's edition only, never one per publication: a
+      contact who signed up for nothing should not find several of our emails
+      a day.
 
-  An address that has opted out or bounced is suppressed everywhere, as it is
-  for every other RNews1 email, and tenant owners are left out of the contact
-  group: they are customers already, and the edition's card asks them to sign
-  up for what they have.
+  Every list belongs to its own site, so nobody else is in either group: a
+  customer's readers get that customer's newsletter, and a reader who signed
+  up on one publication gets that one. An address that has opted out or
+  bounced is suppressed everywhere, as it is for every other RNews1 email.
   """
-  alias Rnews1.{DB, Env, Publications}
+  alias Rnews1.{Contacts, DB, Env, Publications}
 
   @email ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -87,32 +86,23 @@ defmodule Rnews1.Newsletter do
 
     contacts =
       if publication.slug == Publications.default_slug(),
-        do: business_contacts(publication),
+        do: business_contacts(),
         else: []
 
     subscribers ++ contacts
   end
 
-  # A contact whose only record is a newsletter sign-up is a reader of that
-  # publication, not a business contact. Being a stakeholder on a customer's
-  # roster makes them one again whatever their source says, since the
-  # stakeholder insert leaves an existing contact's source alone.
-  defp business_contacts(publication) do
+  # Nobody here is also a subscriber: an address on any site's sign-ups, this
+  # one's included, is not one of RNews1's own contacts.
+  defp business_contacts do
     DB.all(
       """
       SELECT c.id AS contact_id, c.email, c.unsub_token
       FROM contacts c
-      WHERE c.opted_out_at IS NULL AND c.bounced_at IS NULL
-        AND (c.source IS DISTINCT FROM 'newsletter'
-             OR EXISTS (SELECT 1 FROM subscribers su WHERE su.contact_id = c.id))
-        AND NOT EXISTS (SELECT 1 FROM tenants t WHERE t.owner_email = c.email)
-        AND NOT EXISTS (
-          SELECT 1 FROM newsletter_subscriptions s
-          WHERE s.contact_id = c.id AND s.publication_id = $1
-        )
+      WHERE #{Contacts.rnews1_own_sql()}
       ORDER BY c.created_at
       """,
-      [publication.id]
+      []
     )
     |> Enum.map(&Map.put(&1, :reason, :contact))
   end

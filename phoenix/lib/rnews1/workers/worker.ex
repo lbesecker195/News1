@@ -5,7 +5,7 @@ defmodule Rnews1.Worker do
   its own from a task or a test.
   """
   require Logger
-  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, DB, Digests, Domains, EditionMail, Editions, Env, IssueMail, Mailer, News, Newsletter, Outbox, PayPalEvents, PDF, Publications, Stories, StoryPipeline, Topics}
+  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, Contacts, DB, Digests, Domains, EditionMail, Editions, Env, IssueMail, Mailer, News, Newsletter, Outbox, PayPalEvents, PDF, Publications, Stories, StoryPipeline, Topics}
   import Rnews1.Util.HTML, only: [escape: 1]
 
   # ---- content -------------------------------------------------------------------------
@@ -336,6 +336,14 @@ defmodule Rnews1.Worker do
         Outbox.mark_suppressed(job.id, "recipient suppressed")
         %{id: job.id, suppressed: true}
 
+      # Checked again at send time, not only when the job was queued: a
+      # campaign can be planned days ahead, and an address that joined a
+      # customer's list or a site's sign-ups since then is no longer RNews1's
+      # to mail (see Rnews1.Contacts).
+      rnews1_mail?(job) and not Contacts.rnews1_own?(job.contact_id) ->
+        Outbox.mark_suppressed(job.id, "not an RNews1 contact")
+        %{id: job.id, suppressed: true}
+
       true ->
         case build(job) do
           {:error, %Unbuildable{message: message}} ->
@@ -355,6 +363,12 @@ defmodule Rnews1.Worker do
         end
     end
   end
+
+  # The mail RNews1 sends on its own account rather than because the reader
+  # signed up: the outreach campaign, and the www edition's business contacts.
+  defp rnews1_mail?(%{kind: "campaign"}), do: true
+  defp rnews1_mail?(%{kind: "edition", payload: %{"reason" => "contact"}}), do: true
+  defp rnews1_mail?(_), do: false
 
   defp suppressed?(contact_id) do
     case DB.one("SELECT opted_out_at, bounced_at FROM contacts WHERE id=$1", [contact_id]) do
