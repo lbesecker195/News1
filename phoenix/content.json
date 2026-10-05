@@ -1,7 +1,7 @@
 {
   "$comment": "Copy and layout for the briefing landing page at /brief/:id and its PDF. Edit this rather than the template \u2014 the page is assembled from the blocks below, in order. Restart is not needed in development; the file is re-read when it changes.",
   "brand": {
-    "name": "rnews1",
+    "name": "RNews1",
     "tagline": "Real News, made for One.",
     "description": "Real News, Made for One. RNews1 writes daily news from published reporting, and automated industry newsletters for companies."
   },

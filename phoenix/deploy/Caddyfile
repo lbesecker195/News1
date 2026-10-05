@@ -1,4 +1,4 @@
-# Rnews1 edge — Caddy, on-demand TLS for every host we serve.
+# RNews1 edge — Caddy, on-demand TLS for every host we serve.
 #
 #   app.rnews1.com        the app: marketing, dashboard, API, admin
 #   www.rnews1.com        the editorial archive, twelve languages
@@ -17,7 +17,7 @@
 #
 # The upstream below is the Node app. When nginx is installed, deploy.sh
 # rewrites it to 127.0.0.1:8080 — nginx caching in front of the app — and
-# only Rnews1 hosts take that path, so other sites on this box are untouched.
+# only RNews1 hosts take that path, so other sites on this box are untouched.
 #
 # Rate limits worth knowing: Let's Encrypt allows 50 new certificates per
 # registered domain per week, so 50 brand-new tenant subdomains a week is the

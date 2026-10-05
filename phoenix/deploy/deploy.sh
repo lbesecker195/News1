@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Rnews1 (Phoenix) — the one deploy script. Install or upgrade the whole stack
+# RNews1 (Phoenix) — the one deploy script. Install or upgrade the whole stack
 # on one Ubuntu/Debian server, as a release. Idempotent: rerun to deploy.
 #
 #   From your laptop (or CI):  phoenix/deploy/deploy.sh
@@ -153,7 +153,7 @@ if [[ $FIRST_RUN -eq 1 ]]; then
   DB_PASS="$(openssl rand -hex 24)"
   umask 077
   cat > "$ENV_FILE" <<ENV
-# Rnews1 production environment (Phoenix release). Same names as the Node app.
+# RNews1 production environment (Phoenix release). Same names as the Node app.
 PHX_SERVER=true
 PORT=$PORT
 BIND_HOST=127.0.0.1
@@ -245,7 +245,7 @@ fi
 log "systemd"
 cat > /etc/systemd/system/rnews1.service <<UNIT
 [Unit]
-Description=Rnews1 (Phoenix: web + worker)
+Description=RNews1 (Phoenix: web + worker)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -309,7 +309,7 @@ else
   hh="$(printf '%02d' "$((10#$CONTENT_HOUR))")"
   cat > /etc/systemd/system/rnews1-content.service <<UNIT
 [Unit]
-Description=Rnews1 daily content (one story per section, every language)
+Description=RNews1 daily content (one story per section, every language)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -334,7 +334,7 @@ UNIT
   # This cron has no CRON_TZ, so it wakes hourly at :17 and starts the job only
   # when the UTC hour matches. (% is special in a crontab, hence the backslash.)
   cat > /etc/cron.d/rnews1-content <<CRON
-# Rnews1: write the day's journal. Installed by phoenix/deploy/deploy.sh;
+# RNews1: write the day's journal. Installed by phoenix/deploy/deploy.sh;
 # change CONTENT_HOUR there and redeploy rather than editing this file.
 SHELL=/bin/sh
 PATH=/usr/sbin:/usr/bin:/sbin:/bin

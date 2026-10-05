@@ -1,6 +1,6 @@
 defmodule Rnews1 do
   @moduledoc """
-  Rnews1 keeps the contexts that define your domain
+  The `Rnews1` namespace keeps the contexts that define your domain
   and business logic.
 
   Contexts are also responsible for managing your data, regardless

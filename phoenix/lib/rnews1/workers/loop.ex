@@ -50,7 +50,7 @@ defmodule Rnews1.Workers.Supervisor do
       Supervisor.child_spec({Rnews1.Workers.Loop, name: Rnews1.Workers.Maintenance, step: &Worker.maintenance/0, interval: 600_000, drain: false, delay: 30_000}, id: :maintenance)
     ]
 
-    Logger.info("Rnews1 worker loops started.")
+    Logger.info("RNews1 worker loops started.")
     Supervisor.init(children, strategy: :one_for_one)
   end
 end

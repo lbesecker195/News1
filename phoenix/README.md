@@ -1,6 +1,6 @@
-# Rnews1 — Phoenix
+# RNews1 — Phoenix
 
-The Rnews1 application ("Real News, Made for One") as an Elixir/Phoenix
+The RNews1 application ("Real News, Made for One") as an Elixir/Phoenix
 application: the same product, database schema and URLs as the Node version
 in `../saas`, running as one OTP release.
 
