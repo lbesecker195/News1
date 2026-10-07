@@ -92,6 +92,21 @@ defmodule Rnews1.Env do
   def mailgun_domain, do: get(:mailgun_domain, "")
   def mailgun_from, do: get(:mailgun_from, "")
   def mailgun_signing_key, do: get(:mailgun_signing_key, "")
+
+  @doc """
+  Every key a webhook callback may be signed with, newest first.
+
+  The provider hands out one signing key per webhook, at the moment the webhook
+  is created, so a domain that reports delivery, bounces, complaints and
+  unsubscribes has a key for each. The setting holds them comma-separated and a
+  callback is genuine if it matches any one of them.
+  """
+  def mailgun_signing_keys do
+    mailgun_signing_key()
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
   def mailgun_api_base, do: get(:mailgun_api_base, "https://api.mailgun.net")
 
   def treg_token, do: get(:treg_token, "")

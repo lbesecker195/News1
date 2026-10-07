@@ -143,6 +143,63 @@ defmodule Rnews1.ServicesTest do
         MailgunWebhook.process(stale, fn _ -> flunk("must not apply") end)
       end
     end
+
+    test "accepts a callback signed with any of the domain's webhook keys" do
+      previous = Application.get_env(:rnews1, :env)
+
+      Application.put_env(
+        :rnews1,
+        :env,
+        Keyword.put(previous, :mailgun_signing_key, " first-key , signing-key,third-key ")
+      )
+
+      on_exit(fn -> Application.put_env(:rnews1, :env, previous) end)
+
+      assert Rnews1.Env.mailgun_signing_keys() == ["first-key", "signing-key", "third-key"]
+
+      applied = self()
+
+      for key <- ["first-key", "signing-key", "third-key"] do
+        ts = to_string(System.os_time(:second))
+        sig = :crypto.mac(:hmac, :sha256, key, ts <> "t") |> Base.encode16(case: :lower)
+
+        body = %{
+          "signature" => %{"timestamp" => ts, "token" => "t", "signature" => sig},
+          "event-data" => %{"id" => "ev-#{key}", "event" => "complained", "recipient" => "a@b.com"}
+        }
+
+        MailgunWebhook.process(body, fn event -> send(applied, {:applied, event.id}) end)
+        assert_received {:applied, _}
+      end
+
+      ts = to_string(System.os_time(:second))
+      forged = :crypto.mac(:hmac, :sha256, "not-a-key", ts <> "t") |> Base.encode16(case: :lower)
+
+      assert_raise Rnews1.HttpError, ~r/Invalid Mailgun signature/, fn ->
+        MailgunWebhook.process(
+          %{
+            "signature" => %{"timestamp" => ts, "token" => "t", "signature" => forged},
+            "event-data" => %{"id" => "x", "event" => "accepted"}
+          },
+          fn _ -> flunk("must not apply") end
+        )
+      end
+    end
+
+    test "refuses every callback when no signing key is configured" do
+      previous = Application.get_env(:rnews1, :env)
+      Application.put_env(:rnews1, :env, Keyword.put(previous, :mailgun_signing_key, ""))
+      on_exit(fn -> Application.put_env(:rnews1, :env, previous) end)
+
+      assert Rnews1.Env.mailgun_signing_keys() == []
+
+      assert_raise Rnews1.HttpError, ~r/Invalid Mailgun signature/, fn ->
+        MailgunWebhook.process(
+          Map.put(signed(), "event-data", %{"id" => "x", "event" => "accepted"}),
+          fn _ -> flunk("must not apply") end
+        )
+      end
+    end
   end
 
   describe "IssueMail" do

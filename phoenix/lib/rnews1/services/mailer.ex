@@ -75,14 +75,23 @@ defmodule Rnews1.MailgunWebhook do
 
     if not valid_shape, do: raise(HttpError, status: 403, message: "Invalid Mailgun signature.")
 
-    expected = :crypto.mac(:hmac, :sha256, Env.mailgun_signing_key(), timestamp <> token)
+    # One key per webhook, so a callback is genuine if any of them signs it.
+    # Every candidate is compared, without stopping at the first match, so the
+    # answer takes the same time whichever key signed it.
+    signed? =
+      case Base.decode16(supplied, case: :mixed) do
+        {:ok, given} ->
+          Env.mailgun_signing_keys()
+          |> Enum.reduce(false, fn key, matched ->
+            expected = :crypto.mac(:hmac, :sha256, key, timestamp <> token)
+            Plug.Crypto.secure_compare(expected, given) or matched
+          end)
 
-    with {:ok, given} <- Base.decode16(supplied, case: :mixed),
-         true <- Plug.Crypto.secure_compare(expected, given) do
-      :ok
-    else
-      _ -> raise HttpError, status: 403, message: "Invalid Mailgun signature."
-    end
+        :error ->
+          false
+      end
+
+    if not signed?, do: raise(HttpError, status: 403, message: "Invalid Mailgun signature.")
 
     data = body["event-data"]
 
