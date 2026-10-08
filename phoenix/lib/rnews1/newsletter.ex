@@ -107,5 +107,53 @@ defmodule Rnews1.Newsletter do
     |> Enum.map(&Map.put(&1, :reason, :contact))
   end
 
+  @doc """
+  Everyone on this publication's list, newest first, for the owner to look at.
+
+  Suppressed addresses stay on the list and are flagged rather than hidden: the
+  owner should be able to see that someone opted out or bounced, which is also
+  why the count of who actually receives the edition is smaller than this list.
+  """
+  def subscribers(publication) do
+    DB.all(
+      """
+      SELECT c.email,
+             to_char(s.created_at, 'YYYY-MM-DD') AS joined,
+             (c.opted_out_at IS NOT NULL OR c.bounced_at IS NOT NULL) AS suppressed
+      FROM newsletter_subscriptions s JOIN contacts c ON c.id = s.contact_id
+      WHERE s.publication_id = $1
+      ORDER BY s.created_at DESC, c.email
+      """,
+      [publication.id]
+    )
+  end
+
+  @doc """
+  Takes an address off this publication's list and nothing else: another site's
+  list is that site's, and an opt-out is global and belongs to the reader, so
+  neither is touched here.
+  """
+  def remove(publication, email) do
+    DB.execute(
+      """
+      DELETE FROM newsletter_subscriptions s USING contacts c
+      WHERE c.id = s.contact_id AND s.publication_id = $1 AND c.email = $2
+      """,
+      [publication.id, to_string(email)]
+    ) > 0
+  end
+
+  @doc "The editions this publication has sent, newest first."
+  def recent_editions(publication, limit \\ 14) do
+    DB.all(
+      """
+      SELECT to_char(edition_date, 'YYYY-MM-DD') AS date, recipients
+      FROM edition_runs WHERE publication_id = $1
+      ORDER BY edition_date DESC LIMIT $2
+      """,
+      [publication.id, limit]
+    )
+  end
+
   def unsubscribe_url(%{unsub_token: token}), do: "#{Env.app_origin()}/u/#{token}"
 end

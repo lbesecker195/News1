@@ -351,6 +351,8 @@
    */
   const SITE_KEY = "rnews1:site";
   const BRIEFING_ONLY = ["content", "audience", "billing"];
+  /* Only a news site has readers who signed themselves up. */
+  const PUBLICATION_ONLY = ["newsletter"];
 
   function selectedSite() {
     const sites = state.sites || [];
@@ -421,6 +423,11 @@
       if (link) link.hidden = publication;
     }
 
+    for (const name of PUBLICATION_ONLY) {
+      const link = document.querySelector(`[data-pane-link="${name}"]`);
+      if (link) link.hidden = !publication;
+    }
+
     /* Everything that only makes sense for a briefing: the RSS and embed links,
      * the stakeholder gate, the preview. */
     for (const el of document.querySelectorAll("[data-briefing-only]")) el.hidden = publication;
@@ -442,10 +449,99 @@
       }
     }
 
-    /* A briefing-only pane must not stay open after switching away from it. */
+    /* A pane that belongs to the other kind of site must not stay open after
+     * switching away from it. */
     if (publication && BRIEFING_ONLY.includes(currentPane())) window.location.hash = "#overview";
+    if (!publication && PUBLICATION_ONLY.includes(currentPane())) window.location.hash = "#overview";
+
+    /* The list belongs to the site, so it is fetched per site rather than
+     * carried in /api/me, which describes the account. */
+    if (publication) loadNewsletter(site.id);
 
     renderBlockers(publication);
+  }
+
+  /* ---- a news site's newsletter -------------------------------------------
+   * Addresses here are typed by the public into a sign-up form, so every one
+   * of them reaches the page through textContent and never as markup.
+   */
+  async function loadNewsletter(slug) {
+    const stateLine = $("#newsletter-state");
+    const readers = $("#newsletter-readers");
+    const editions = $("#newsletter-editions");
+
+    if (!stateLine || !readers || !editions) return;
+
+    let data;
+
+    try {
+      data = await api("GET", `/api/newsletter/${encodeURIComponent(slug)}`);
+    } catch (error) {
+      stateLine.textContent = error.message;
+      stateLine.className = "small warn";
+      readers.replaceChildren();
+      editions.replaceChildren();
+      return;
+    }
+
+    const total = data.subscribers.length;
+    const sending =
+      data.sendingHour === null || data.sendingHour === undefined
+        ? "Sending is switched off, so no edition goes out yet."
+        : `An edition goes out daily at ${String(data.sendingHour).padStart(2, "0")}:00 UTC.`;
+
+    stateLine.textContent = total
+      ? `${data.receiving} of ${total} ${total === 1 ? "reader" : "readers"} will receive it. ${sending}`
+      : `No readers yet. ${sending}`;
+    stateLine.className = total ? "small ok" : "small";
+
+    const web = $("#newsletter-web");
+    const signup = $("#newsletter-signup");
+    if (web) web.href = data.webUrl;
+    if (signup) signup.href = data.signupUrl;
+
+    readers.replaceChildren();
+
+    if (!total) {
+      const empty = document.createElement("li");
+      empty.textContent = "Nobody has signed up on this site yet.";
+      readers.append(empty);
+    }
+
+    for (const row of data.subscribers) {
+      const item = document.createElement("li");
+      const label = document.createElement("span");
+
+      label.textContent = row.suppressed
+        ? `${row.email} — joined ${row.joined}, unsubscribed or bouncing`
+        : `${row.email} — joined ${row.joined}`;
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", busy(remove, async () => {
+        await api("DELETE", `/api/newsletter/${encodeURIComponent(slug)}/subscriber`, { email: row.email });
+        say("Reader removed from this site.");
+        await loadNewsletter(slug);
+      }));
+
+      item.append(label, " ", remove);
+      readers.append(item);
+    }
+
+    editions.replaceChildren();
+
+    if (!data.editions.length) {
+      const none = document.createElement("li");
+      none.textContent = "No edition has gone out yet.";
+      editions.append(none);
+    }
+
+    for (const run of data.editions) {
+      const item = document.createElement("li");
+      item.textContent = `${run.date} — ${run.recipients} ${run.recipients === 1 ? "reader" : "readers"}`;
+      editions.append(item);
+    }
   }
 
   const switcherEl = $("#site-switcher");

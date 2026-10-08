@@ -31,6 +31,7 @@
       </a>
       <a href="#content" data-pane-link="content">Content</a>
       <a href="#audience" data-pane-link="audience">Audience</a>
+      <a href="#newsletter" data-pane-link="newsletter">Newsletter</a>
       <a href="#site" data-pane-link="site">Site</a>
       <a href="#billing" data-pane-link="billing">Billing</a>
       <a href="#account" data-pane-link="account">Account</a>
@@ -138,6 +139,44 @@
           </p>
 
           <ul id="subscribers"></ul>
+        </div>
+      </section>
+
+      <%!--
+        ---- Newsletter -------------------------------------------------
+        A news site's own list. Only news sites have one: a briefing's
+        recipients are its Audience, added by the owner, while these people
+        signed up themselves on the site.
+      --%>
+      <section class="pane" data-pane="newsletter" hidden>
+        <div class="pane-head">
+          <h1>Newsletter</h1>
+          <p class="small muted">
+            Readers who signed up on this site, and the editions it has sent them.
+          </p>
+        </div>
+
+        <div class="card">
+          <p id="newsletter-state" class="small"></p>
+          <p class="small muted">
+            <a id="newsletter-web" href="#" target="_blank" rel="noopener">The latest edition</a>
+            ·
+            <a id="newsletter-signup" href="#" target="_blank" rel="noopener">Where readers sign up</a>
+          </p>
+        </div>
+
+        <h2 class="section-label">Readers</h2>
+        <div class="card">
+          <ul id="newsletter-readers"></ul>
+          <p class="small muted">
+            Every edition carries a one-click unsubscribe. Removing someone here takes them off
+            this site only; an address that opts out or bounces is suppressed everywhere.
+          </p>
+        </div>
+
+        <h2 class="section-label">Recent editions</h2>
+        <div class="card">
+          <ul id="newsletter-editions"></ul>
         </div>
       </section>
 
