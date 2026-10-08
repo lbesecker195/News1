@@ -278,8 +278,15 @@ defmodule Rnews1Web.ArchiveTest do
 
       assert [briefing | rest] = me["sites"]
       assert briefing["kind"] == "briefing"
-      assert Enum.map(rest, & &1["id"]) == [other.slug]
-      assert hd(rest)["address"] =~ "news.fashionshowon.test"
+
+      # Each news site is offered twice: the site, and the newsletter it sends.
+      assert Enum.map(rest, &{&1["id"], &1["kind"]}) == [
+               {other.slug, "publication"},
+               {"#{other.slug}:newsletter", "newsletter"}
+             ]
+
+      assert Enum.all?(rest, &(&1["address"] =~ "news.fashionshowon.test"))
+      assert Enum.all?(rest, &(&1["slug"] == other.slug))
     end
 
     test "renaming onto one of your own news sites says so, rather than 'taken'", %{conn: conn} do

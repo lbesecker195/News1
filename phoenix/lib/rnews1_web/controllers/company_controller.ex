@@ -44,16 +44,33 @@ defmodule Rnews1Web.CompanyController do
             address: site.origin
           }
         ] ++
-          Enum.map(Publications.list_for_tenant(tenant.id), fn publication ->
-            %{
-              id: publication.slug,
-              kind: "publication",
-              label: publication.name,
-              origin: Hosts.publication_origin(publication),
-              address: Hosts.publication_origin(publication),
-              languages: publication.languages,
-              sections: Publications.section_names(publication.id)
-            }
+          Enum.flat_map(Publications.list_for_tenant(tenant.id), fn publication ->
+            origin = Hosts.publication_origin(publication)
+
+            # Two entries per news site: the site itself, and the newsletter it
+            # sends. They are separate things to look after — one is what search
+            # visitors read, the other is a list of people — so the switcher
+            # offers them separately rather than burying one inside the other.
+            [
+              %{
+                id: publication.slug,
+                kind: "publication",
+                slug: publication.slug,
+                label: publication.name,
+                origin: origin,
+                address: origin,
+                languages: publication.languages,
+                sections: Publications.section_names(publication.id)
+              },
+              %{
+                id: publication.slug <> ":newsletter",
+                kind: "newsletter",
+                slug: publication.slug,
+                label: publication.name,
+                origin: origin <> "/newsletter",
+                address: origin
+              }
+            ]
           end),
       password: %{set: password.set, setAt: password.password_set_at},
       subscribers: Subscribers.list_for_tenant(tenant.id),

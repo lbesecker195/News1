@@ -350,9 +350,26 @@
    * does not have. The selection is remembered so a reload stays where you were.
    */
   const SITE_KEY = "rnews1:site";
-  const BRIEFING_ONLY = ["content", "audience", "billing"];
-  /* Only a news site has readers who signed themselves up. */
-  const PUBLICATION_ONLY = ["newsletter"];
+
+  /*
+   * What each kind of selection is for, in the order the panes appear. A news
+   * site and the newsletter it sends are chosen separately in the switcher, so
+   * each shows only the panes that mean anything for it: a newsletter has no
+   * sections or feed, and a news site has no billing.
+   */
+  const PANES_BY_KIND = {
+    briefing: ["overview", "content", "audience", "site", "billing", "account"],
+    publication: ["overview", "site", "account"],
+    newsletter: ["newsletter", "account"]
+  };
+
+  function panesFor(kind) {
+    return PANES_BY_KIND[kind] || PANES_BY_KIND.briefing;
+  }
+
+  function siteLabel(site) {
+    return site.kind === "publication" ? `${site.label} — news site` : `${site.label} — newsletter`;
+  }
 
   function selectedSite() {
     const sites = state.sites || [];
@@ -375,13 +392,22 @@
 
     switcher.replaceChildren();
 
-    for (const s of sites) {
+    /*
+     * An account whose company shares a name with one of its news sites would
+     * otherwise show the same words twice — the company's own newsletter and
+     * the site's. Where that happens, the address tells them apart.
+     */
+    const labels = sites.map(siteLabel);
+    const seen = labels.reduce((counts, label) => ({ ...counts, [label]: (counts[label] || 0) + 1 }), {});
+
+    sites.forEach((s, index) => {
       const option = document.createElement("option");
       option.value = s.id;
-      option.textContent = s.kind === "briefing" ? `${s.label} — newsletter` : `${s.label} — news site`;
+      const label = labels[index];
+      option.textContent = seen[label] > 1 ? `${label} · ${s.address.replace(/^https?:\/\//, "")}` : label;
       option.selected = s.id === current.id;
       switcher.append(option);
-    }
+    });
 
     switcher.disabled = sites.length < 2;
 
@@ -413,24 +439,25 @@
       link.rel = "noopener";
       link.target = "_blank";
       address.append(link);
-      address.append(document.createTextNode(site.kind === "briefing" ? " — your site address." : " — your news site."));
+
+      address.append(document.createTextNode({
+        briefing: " — your site address.",
+        publication: " — your news site.",
+        newsletter: " — the news site this newsletter comes from."
+      }[site.kind] || " — your site address."));
     }
 
+    const briefing = site.kind === "briefing";
     const publication = site.kind === "publication";
+    const panes = panesFor(site.kind);
 
-    for (const name of BRIEFING_ONLY) {
-      const link = document.querySelector(`[data-pane-link="${name}"]`);
-      if (link) link.hidden = publication;
-    }
-
-    for (const name of PUBLICATION_ONLY) {
-      const link = document.querySelector(`[data-pane-link="${name}"]`);
-      if (link) link.hidden = !publication;
+    for (const link of document.querySelectorAll("[data-pane-link]")) {
+      link.hidden = !panes.includes(link.dataset.paneLink);
     }
 
     /* Everything that only makes sense for a briefing: the RSS and embed links,
      * the stakeholder gate, the preview. */
-    for (const el of document.querySelectorAll("[data-briefing-only]")) el.hidden = publication;
+    for (const el of document.querySelectorAll("[data-briefing-only]")) el.hidden = !briefing;
 
     const sub = $("#overview-sub");
     if (sub) sub.textContent = publication ? "Where this news site stands today." : "Where your newsletter stands today.";
@@ -449,16 +476,15 @@
       }
     }
 
-    /* A pane that belongs to the other kind of site must not stay open after
+    /* A pane that belongs to another selection must not stay open after
      * switching away from it. */
-    if (publication && BRIEFING_ONLY.includes(currentPane())) window.location.hash = "#overview";
-    if (!publication && PUBLICATION_ONLY.includes(currentPane())) window.location.hash = "#overview";
+    if (!panes.includes(currentPane())) window.location.hash = `#${panes[0]}`;
 
     /* The list belongs to the site, so it is fetched per site rather than
      * carried in /api/me, which describes the account. */
-    if (publication) loadNewsletter(site.id);
+    if (site.kind === "newsletter") loadNewsletter(site.slug);
 
-    renderBlockers(publication);
+    renderBlockers(!briefing);
   }
 
   /* ---- a news site's newsletter -------------------------------------------
@@ -551,7 +577,8 @@
 
     const site = (state.sites || []).find(s => s.id === event.target.value);
     applySite(site);
-    say(`Switched to ${site?.label ?? "that site"}.`);
+    /* The full label, because a site and its newsletter share a name. */
+    say(site ? `Switched to ${siteLabel(site)}.` : "Switched to that site.");
   });
 
   function fillCompanyForm(tenant) {
