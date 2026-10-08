@@ -61,6 +61,10 @@ defmodule Rnews1Web.Router do
       post "/subscribers", SubscriberController, :add
       delete "/subscribers", SubscriberController, :remove
 
+      # Per news site, because each site's newsletter list is its own.
+      get "/newsletter/:slug", NewsletterController, :show
+      delete "/newsletter/:slug/subscriber", NewsletterController, :remove
+
       post "/site/subdomain", DomainController, :rename_subdomain
       post "/site/domain", DomainController, :set_domain
       post "/site/domain/verify", DomainController, :verify_domain

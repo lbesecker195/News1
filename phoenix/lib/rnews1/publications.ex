@@ -190,6 +190,16 @@ defmodule Rnews1.Publications do
   end
 
   @doc """
+  The same lookup by slug, which is how the app names a site: the dashboard's
+  switcher carries slugs, not ids.
+  """
+  def find_slug_for_tenant(_slug, nil), do: nil
+
+  def find_slug_for_tenant(slug, tenant_id) do
+    DB.one("SELECT * FROM publications WHERE slug = $1 AND tenant_id = $2", [slug, tenant_id])
+  end
+
+  @doc """
   Hands a publication to an account. Idempotent, and refuses to move one that
   somebody else already holds — adopting is for rows that have no owner.
   """
