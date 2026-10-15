@@ -105,7 +105,15 @@ defmodule Rnews1Web.MiscTest do
       assert campaign.headers["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click" and campaign.text =~ "Hi Dana,"
       assert_raise Worker.Unbuildable, fn -> Worker.build_message(%{kind: "mystery", payload: %{}, contact_id: nil, tenant_id: nil}) end
 
-      assert Map.keys(Worker.maintenance()) |> Enum.sort() == [:briefs, :campaigns, :domains, :domains_failing, :exhausted, :expired, :requeued]
+      # Maintenance reads the provider's suppression lists; answer them empty
+      # rather than let the test reach the network.
+      previous = Application.get_env(:rnews1, :req_options)
+      Application.put_env(:rnews1, :req_options, plug: {Req.Test, Rnews1.HTTP})
+      on_exit(fn -> Application.put_env(:rnews1, :req_options, previous || []) end)
+      Req.Test.stub(Rnews1.HTTP, fn conn -> Req.Test.json(conn, %{"items" => []}) end)
+
+      assert Map.keys(Worker.maintenance()) |> Enum.sort() ==
+               [:briefs, :campaigns, :domains, :domains_failing, :exhausted, :expired, :requeued, :suppressions]
       assert Worker.schedule_digests(~U[2026-09-10 05:00:00Z]) == nil
     end
 
