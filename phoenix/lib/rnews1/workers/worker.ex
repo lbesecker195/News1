@@ -5,7 +5,7 @@ defmodule Rnews1.Worker do
   its own from a task or a test.
   """
   require Logger
-  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, Contacts, DB, Digests, Domains, EditionMail, Editions, Env, IssueMail, Mailer, News, Newsletter, Outbox, PayPalEvents, PDF, Publications, Stories, StoryPipeline, Topics}
+  alias Rnews1.{Ads, AdSelection, BriefPage, Briefs, Campaigns, Clicks, Contacts, DB, Digests, Domains, EditionMail, Editions, Env, IssueMail, Mailer, News, Newsletter, Outbox, PayPalEvents, PDF, Publications, Stories, StoryPipeline, Suppressions, Topics}
   import Rnews1.Util.HTML, only: [escape: 1]
 
   # ---- content -------------------------------------------------------------------------
@@ -429,6 +429,22 @@ defmodule Rnews1.Worker do
           %{checked: 0, failing: 0, dropped: 0}
       end
 
+    # The provider's bounce, complaint and unsubscribe lists, so nothing new is
+    # queued for an address it will refuse. A failure here only delays that by
+    # one tick; it must not stop the rest of maintenance.
+    suppressions =
+      if Suppressions.configured?() do
+        try do
+          Suppressions.sync()
+        rescue
+          e ->
+            Logger.error("Suppression sync failed: #{Exception.message(e)}")
+            %{}
+        end
+      else
+        %{}
+      end
+
     removed = Briefs.delete_expired()
 
     for brief <- removed, brief.has_pdf do
@@ -439,6 +455,6 @@ defmodule Rnews1.Worker do
       end
     end
 
-    %{requeued: requeued, exhausted: exhausted, expired: expired, campaigns: campaigns, briefs: length(removed), domains: domains.checked, domains_failing: domains.failing}
+    %{requeued: requeued, exhausted: exhausted, expired: expired, campaigns: campaigns, briefs: length(removed), domains: domains.checked, domains_failing: domains.failing, suppressions: suppressions}
   end
 end
